@@ -28,12 +28,12 @@ A portable, multi-interface packet sniffing and network monitoring tool built fo
 
 ## Team Members
 
-| Name | SRN |
-| :--- | :--- |
-| Vishal Prasath | PES1UG24CS536 |
-| Varshini A | PES1UG24CS517 |
-| Tejaswini R Pujar | PES1UG24CS500 |
-| Ritu Ravish | PES1UG24CS928 |
+| Name | SRN | Role |
+| :--- | :--- | :--- |
+| Vishal Prasath | PES1UG24CS536 | DevOps Lead, Capture Engine Owner |
+| Varshini A | PES1UG24CS517 | Scrum Master, Dashboard and Reporting Owner |
+| Tejaswini R Pujar | PES1UG24CS500 | QA and Data Lead, Parsing and Zeek Integration Owner |
+| Ritu Ravish | PES1UG24CS928 | Security Lead, Threat Detection Owner |
 
 ## Course Information
 
