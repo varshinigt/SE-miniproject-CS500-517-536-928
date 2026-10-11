@@ -1,0 +1,12 @@
+# Pocket Packet Sniffer - Development & Testing Dependencies
+# Core & Parsing
+scapy>=2.5.0
+
+# Testing & Code Coverage
+pytest>=8.0.0
+pytest-cov>=4.1.0
+
+# Security Validation (Lead: Ritu Ravish)
+bandit>=1.7.7
+pip-audit>=2.7.0
+flake8>=7.0.0
