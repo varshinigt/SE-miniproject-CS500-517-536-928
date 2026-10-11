@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (flake8)
+        run: |
+          # Fail only on syntax errors and undefined names
+          flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Report all other style issues without failing the build
+          flake8 src tests --count --exit-zero --max-line-length=120 --statistics
+
+      - name: Security scan (Bandit)
+        run: bandit -r src
+
+      - name: Dependency audit (pip-audit)
+        run: pip-audit -r requirements.txt
+
+      - name: Unit tests with coverage
+        run: pytest --cov=src --cov-branch --cov-report=term-missing

@@ -74,3 +74,8 @@ build/
 # Temporary files
 tmp/
 temp/
+
+# Test coverage
+.coverage
+htmlcov/
+coverage.xml
