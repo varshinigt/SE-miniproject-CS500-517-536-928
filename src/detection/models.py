@@ -4,7 +4,7 @@ Defines standard schemas for incoming normalized packets and outgoing security a
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 import uuid
@@ -46,6 +46,23 @@ class NormalizedRecord:
     payload_len: int = 0
     metadata: Dict[str, Any] = field(default_factory=dict)  # Protocol-specific fields (e.g., arp_op, wifi_subtype)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert normalized record to dictionary for JSON serialization and logging."""
+        return {
+            "timestamp": self.timestamp,
+            "interface": self.interface,
+            "link_type": self.link_type,
+            "src_mac": self.src_mac,
+            "dst_mac": self.dst_mac,
+            "src_ip": self.src_ip,
+            "dst_ip": self.dst_ip,
+            "protocol": self.protocol,
+            "src_port": self.src_port,
+            "dst_port": self.dst_port,
+            "payload_len": self.payload_len,
+            "metadata": self.metadata,
+        }
+
 
 @dataclass
 class Alert:
@@ -60,7 +77,7 @@ class Alert:
     source_interface: str
     evidence: Dict[str, Any]
     mitigation: str
-    timestamp: float = field(default_factory=lambda: datetime.utcnow().timestamp())
+    timestamp: float = field(default_factory=lambda: datetime.now(timezone.utc).timestamp())
     alert_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -68,8 +85,8 @@ class Alert:
         return {
             "alert_id": self.alert_id,
             "timestamp": self.timestamp,
-            "threat_type": self.threat_type.value,
-            "severity": self.severity.value,
+            "threat_type": self.threat_type.value if hasattr(self.threat_type, "value") else str(self.threat_type),
+            "severity": self.severity.value if hasattr(self.severity, "value") else str(self.severity),
             "title": self.title,
             "description": self.description,
             "source_interface": self.source_interface,
