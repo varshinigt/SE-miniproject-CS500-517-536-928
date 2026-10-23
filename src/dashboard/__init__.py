@@ -1,3 +1,1 @@
-"""
-F4: Live Monitoring and Reporting (Owner: Varshini A)
-"""
+"""Live web dashboard and REST API for Pocket Packet Sniffer (feature F4)."""
