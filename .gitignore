@@ -79,3 +79,11 @@ temp/
 .coverage
 htmlcov/
 coverage.xml
+
+# local data and test output
+data/
+*.db
+.coverage
+.pytest_cache/
+__pycache__/
+.venv/
