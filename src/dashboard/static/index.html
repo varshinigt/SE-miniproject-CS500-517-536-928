@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pocket Packet Sniffer</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #0f1419; color: #e6e6e6; }
+    header { display: flex; justify-content: space-between; align-items: center;
+             padding: 12px 16px; background: #1a2129; }
+    h1 { font-size: 18px; margin: 0; }
+    h2 { font-size: 15px; margin: 0 0 8px; }
+    #status { font-size: 13px; color: #8fbf7f; }
+    main { display: grid; gap: 16px; padding: 16px; grid-template-columns: 2fr 1fr; }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+    section { background: #1a2129; border-radius: 8px; padding: 12px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #2a343f; white-space: nowrap; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li { padding: 8px; margin-bottom: 6px; border-left: 4px solid #5a6b7b; background: #222c36;
+         border-radius: 4px; font-size: 13px; }
+    li.sev-high { border-left-color: #e5534b; }
+    li.sev-medium { border-left-color: #d29922; }
+    li.sev-low { border-left-color: #3fb950; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Pocket Packet Sniffer</h1>
+    <span id="status">connecting...</span>
+  </header>
+  <main>
+    <section>
+      <h2>Live packets</h2>
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Length</th><th>Info</th></tr>
+        </thead>
+        <tbody id="packet-rows"></tbody>
+      </table>
+    </section>
+  </main>
+  <script>
+    const POLL_MS = 1000;
+
+    function fmtTime(ts) {
+      return new Date(ts * 1000).toLocaleTimeString();
+    }
+
+    // textContent (never innerHTML) so captured network data cannot inject markup.
+    function cell(text) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      return td;
+    }
+
+    async function refreshPackets() {
+      const res = await fetch("/packets?limit=50");
+      const packets = await res.json();
+      const rows = packets.map(p => {
+        const tr = document.createElement("tr");
+        [fmtTime(p.ts), p.src, p.dst, p.protocol, p.length, p.info].forEach(v => tr.appendChild(cell(v)));
+        return tr;
+      });
+      document.getElementById("packet-rows").replaceChildren(...rows);
+    }
+
+
+    async function refresh() {
+      try {
+        await refreshPackets();
+        document.getElementById("status").textContent = "live - " + new Date().toLocaleTimeString();
+      } catch (err) {
+        document.getElementById("status").textContent = "offline";
+      }
+    }
+
+    refresh();
+    setInterval(refresh, POLL_MS);
+  </script>
+</body>
+</html>
