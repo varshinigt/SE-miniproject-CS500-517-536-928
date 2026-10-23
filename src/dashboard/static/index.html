@@ -39,6 +39,10 @@
         <tbody id="packet-rows"></tbody>
       </table>
     </section>
+    <section id="alert-feed">
+      <h2>Alerts</h2>
+      <ul id="alert-list"></ul>
+    </section>
   </main>
   <script>
     const POLL_MS = 1000;
@@ -65,10 +69,28 @@
       document.getElementById("packet-rows").replaceChildren(...rows);
     }
 
+    async function refreshAlerts() {
+      const res = await fetch("/alerts?limit=20");
+      const alerts = await res.json();
+      const items = alerts.map(a => {
+        const li = document.createElement("li");
+        li.className = "sev-" + String(a.severity).replace(/[^a-z]/gi, "");
+        li.textContent = "[" + String(a.severity).toUpperCase() + "] " + a.rule + ": " +
+                         a.description + " (" + fmtTime(a.ts) + ")";
+        return li;
+      });
+      if (items.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No alerts";
+        items.push(li);
+      }
+      document.getElementById("alert-list").replaceChildren(...items);
+    }
 
     async function refresh() {
       try {
         await refreshPackets();
+        await refreshAlerts();
         document.getElementById("status").textContent = "live - " + new Date().toLocaleTimeString();
       } catch (err) {
         document.getElementById("status").textContent = "offline";
