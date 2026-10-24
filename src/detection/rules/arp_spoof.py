@@ -33,9 +33,9 @@ class ArpSpoofDetector(BaseDetector):
         self.flood_threshold = flood_threshold
         self.flood_window_seconds = flood_window_seconds
 
-    def process_record(self, record: NormalizedRecord) -> List[Alert]:
+    def process_record(self, record: Optional[NormalizedRecord]) -> List[Alert]:
         """Inspect ARP packets for conflicts or high-rate gratuitous floods."""
-        if not self.enabled:
+        if not self.enabled or record is None:
             return []
 
         # Only inspect ARP traffic on Ethernet / WiFi link types
@@ -45,7 +45,8 @@ class ArpSpoofDetector(BaseDetector):
         alerts: List[Alert] = []
         claimed_ip = record.src_ip.strip()
         sender_mac = record.src_mac.strip().lower()
-        arp_op = record.metadata.get("arp_op", 2)  # 1 = Request, 2 = Reply
+        metadata = record.metadata or {}
+        arp_op = metadata.get("arp_op", 2)  # 1 = Request, 2 = Reply
 
         # 1. Check for IP-MAC Conflict (Cache Poisoning)
         if claimed_ip in self.ip_mac_table:

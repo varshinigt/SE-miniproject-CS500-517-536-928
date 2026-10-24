@@ -25,7 +25,7 @@ Thumbs.db
 .env.production.local
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -34,19 +34,23 @@ pnpm-debug.log*
 
 # Node
 node_modules/
-npm-debug.log
-yarn-error.log
 package-lock.json
 yarn.lock
 
-# Python
+# Python Caches & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Virtual Environments
 env/
-build/
+venv/
+.venv/
+ENV/
+
+# Python Packaging & Builds
 develop-eggs/
 dist/
 downloads/
@@ -61,29 +65,39 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-venv/
-.venv/
-
-# General Build outputs
+build/
 out/
 bin/
 obj/
-dist/
-build/
 
-# Temporary files
-tmp/
-temp/
-
-# Test coverage
-.coverage
-htmlcov/
-coverage.xml
-
-# local data and test output
-data/
-*.db
-.coverage
+# Testing & Code Quality Tools
 .pytest_cache/
-__pycache__/
-.venv/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.scannerwork/
+.sonarqube/
+
+# Runtime Databases & Sniffer Dumps (local data generated when running)
+data/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.pcap
+*.pcapng
+*.cap
+
+# Internal Document Generation & Scratch Tooling
+scripts/
+scratch/
+scratch_*
+*.tmp
+temp/
+tmp/
+
