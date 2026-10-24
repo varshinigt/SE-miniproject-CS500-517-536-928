@@ -9,6 +9,8 @@ Usage:
 """
 import argparse
 import random
+
+_rng = random.SystemRandom()
 import time
 
 from . import db
@@ -27,9 +29,9 @@ INSERT_ALERT = "INSERT INTO alerts (ts, severity, rule, description) VALUES (?, 
 
 
 def random_packet(now):
-    protocol = random.choice(PROTOCOLS)
-    src, dst = random.sample(HOSTS, 2)
-    return (now, src, dst, protocol, random.randint(40, 1500), f"{protocol} sample packet")
+    protocol = _rng.choice(PROTOCOLS)
+    src, dst = _rng.sample(HOSTS, 2)
+    return (now, src, dst, protocol, _rng.randint(40, 1500), f"{protocol} sample packet")
 
 
 def seed(db_path, packets=50, alerts=4):
@@ -54,7 +56,7 @@ def run_live(db_path, interval=1.0, alert_every=15):
             conn.execute(INSERT_PACKET, random_packet(now))
             count += 1
             if count % alert_every == 0:
-                severity, rule, description = random.choice(SAMPLE_ALERTS)
+                severity, rule, description = _rng.choice(SAMPLE_ALERTS)
                 conn.execute(INSERT_ALERT, (now, severity, rule, description))
         time.sleep(interval)
 
