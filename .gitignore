@@ -82,6 +82,7 @@ htmlcov/
 .sonarqube/
 
 # Runtime Databases & Sniffer Dumps (local data generated when running)
+data/
 *.sqlite
 *.sqlite3
 *.db
@@ -99,3 +100,4 @@ scratch_*
 *.tmp
 temp/
 tmp/
+
