@@ -24,19 +24,38 @@
 | #17 | REQ-F3-03 | TCP/UDP horizontal and vertical port scan detector (`PortScanDetector`) | 5 | Merged |
 | | | **Total planned** | **15** | |
 
+## F1 Packet Capture: planned work
+
+| Issue | SRS ID | Story | Points | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| #28 | REQ-F1-01 | Promiscuous Ethernet capture with safe error handling (`EthernetCapture`) | 5 | Merged (#54) |
+| #29 | REQ-F1-05 | PCAP session recording, rotation and replay (`PcapSession`, `replay_pcap`) | 5 | Merged (#55) |
+| #30 | NFR-PERF-01 | Capture statistics tracking and loss benchmark (`StatsTracker`, `capture_benchmark.py`) | 2 | Merged (#56) |
+| | | **Total planned** | **12** | |
+
 ## Team velocity
 
 Fill in from the Project board (Project -> Insights) after the PRs are merged.
 
 | Member | Points planned | Points completed |
 | :--- | :--- | :--- |
-| Vishal Prasath | | |
+| Vishal Prasath | 12 | 12 |
 | Tejaswini R Pujar | | |
 | Ritu Ravish | 15 | 15 |
 | Varshini A | 15 | |
 | **Team** | | |
 
 ## What went well / what to improve
+
+### F1 Packet Capture (Vishal Prasath)
+- **What went well:**
+  - Implemented promiscuous Ethernet capture with graceful exception boundaries for missing NICs and unprivileged runs.
+  - Implemented size- and duration-bounded PCAP rotation matching Wireshark format, along with deterministic replay for offline evaluation and testing.
+  - Added session-level stats tracking for captured and dropped frames via Linux sysfs NIC counters, supported by unit tests with 100% test pass rate.
+  - Maintained full CI compliance (flake8, Bandit, pip-audit, pytest).
+- **What to improve:**
+  - Execute the sustained 1,000 pps lossless capture benchmark on physical Raspberry Pi 4 hardware once deployed in lab.
+  - Proceed with Sprint 2 wireless capture features (WiFi monitor mode hopping, BLE advertisements, and ESP32 UDP ingestion).
 
 ### F3 Threat Detection (Ritu Ravish)
 - **What went well:**
