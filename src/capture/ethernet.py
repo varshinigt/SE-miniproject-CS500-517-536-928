@@ -11,6 +11,8 @@ from typing import Any, Callable, Optional
 
 from scapy.all import sniff
 
+from src.capture.stats import CaptureStats, StatsTracker
+
 logger = logging.getLogger(__name__)
 
 PacketHandler = Callable[[Any, str], None]
@@ -41,6 +43,7 @@ class EthernetCapture:
         self._sniffer = sniffer
         self._stop_requested = False
         self.captured = 0
+        self.stats: Optional[CaptureStats] = None
 
     def _on_packet(self, packet: Any) -> None:
         self.captured += 1
@@ -63,6 +66,8 @@ class EthernetCapture:
 
         self._stop_requested = False
         self.captured = 0
+        tracker = StatsTracker(self.interface)
+        tracker.start()
         logger.info("Starting promiscuous capture on %s", self.interface)
         try:
             self._sniffer(
@@ -78,7 +83,6 @@ class EthernetCapture:
             raise CaptureError(
                 f"Permission denied on {self.interface} (run with root)"
             ) from exc
-        logger.info(
-            "Capture on %s stopped, %d packets", self.interface, self.captured
-        )
+        self.stats = tracker.finish(self.captured)
+        logger.info("Capture stopped: %s", self.stats.summary())
         return self.captured
