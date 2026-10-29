@@ -47,3 +47,15 @@ def fetch_packets(
     }
     with db.connect(db_path) as conn:
         return [dict(row) for row in conn.execute(PACKET_QUERY, params).fetchall()]
+
+
+
+def fetch_alerts(db_path: str, limit: int = 100) -> List[dict]:
+    """Latest alerts, newest first."""
+    with db.connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, ts, severity, rule, description "
+            "FROM alerts ORDER BY ts DESC, id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [dict(row) for row in rows]
