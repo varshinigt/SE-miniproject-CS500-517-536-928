@@ -5,7 +5,6 @@ Verifies detection of horizontal sweeps and vertical scans, sliding-window expir
 duplicate port handling, protocol support, and malformed record safety.
 """
 
-import time
 import unittest
 from src.detection.models import NormalizedRecord, ThreatType, Severity
 from src.detection.rules.port_scan import PortScanDetector

@@ -1,0 +1,4 @@
+# Bandit SAST Configuration (SEC-01)
+# Pocket Packet Sniffer — Course: UE24CS341A
+skips: ['B101']
+exclude_dirs: ['tests', 'demo', 'scripts']

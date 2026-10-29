@@ -7,7 +7,7 @@ Corresponds to SRS REQ-F3-03 and GitHub Issue #17 (Test Case UT_F3_07).
 """
 
 from collections import defaultdict, deque
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from .base import BaseDetector
 from ..models import NormalizedRecord, Alert, ThreatType, Severity
 
