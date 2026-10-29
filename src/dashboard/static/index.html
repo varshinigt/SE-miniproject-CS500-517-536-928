@@ -35,6 +35,23 @@
     li.sev-high { border-left-color: #e5534b; }
     li.sev-medium { border-left-color: #d29922; }
     li.sev-low { border-left-color: #3fb950; }
+    /* Phones: single column, alerts first, fewer table columns, thumb-sized controls. */
+    @media (max-width: 600px) {
+      header { flex-wrap: wrap; gap: 4px; padding: 10px 12px; }
+      main { padding: 10px; gap: 10px; }
+      .side { display: contents; }
+      #alert-feed { order: -1; }
+      #chart-panel { order: 1; }
+      #device-panel { order: 2; }
+      #packet-table th:nth-child(5), #packet-table td:nth-child(5),
+      #packet-table th:nth-child(6), #packet-table td:nth-child(6),
+      #device-table th:nth-child(3), #device-table td:nth-child(3),
+      #device-table th:nth-child(4), #device-table td:nth-child(4) { display: none; }
+      table { font-size: 12px; }
+      th, td { padding: 6px 4px; }
+      #filter-bar input, #filter-bar select, #filter-bar button { min-height: 44px; font-size: 16px; }
+      .export a { padding: 10px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -54,7 +71,7 @@
         <input id="filter-search" type="search" placeholder="Search packets" aria-label="Search">
         <button id="filter-clear" type="button">Clear</button>
       </form>
-      <table>
+      <table id="packet-table">
         <thead>
           <tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Length</th><th>Info</th></tr>
         </thead>
@@ -74,7 +91,7 @@
       </section>
       <section id="device-panel">
         <h2>Device inventory</h2>
-        <table>
+        <table id="device-table">
           <thead>
             <tr><th>Device</th><th>Packets</th><th>Bytes</th><th>Protocols</th><th>Last seen</th></tr>
           </thead>
