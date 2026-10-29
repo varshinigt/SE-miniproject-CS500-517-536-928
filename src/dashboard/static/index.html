@@ -95,6 +95,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
     const POLL_MS = 1000;
+    const RECONNECT_MS = 3000;
 
     function fmtTime(ts) {
       return new Date(ts * 1000).toLocaleTimeString();
@@ -134,9 +135,9 @@
       });
     }
 
-    async function refreshPackets() {
-      const res = await fetch(packetUrl());
-      const packets = await res.json();
+    // ---- rendering: one function per panel, used by both WebSocket and polling ----
+
+    function renderPackets(packets) {
       const rows = packets.map(p => {
         const tr = document.createElement("tr");
         [fmtTime(p.ts), p.src, p.dst, p.protocol, p.length, p.info].forEach(v => tr.appendChild(cell(v)));
@@ -145,9 +146,7 @@
       document.getElementById("packet-rows").replaceChildren(...rows);
     }
 
-    async function refreshAlerts() {
-      const res = await fetch("/alerts?limit=20");
-      const alerts = await res.json();
+    function renderAlerts(alerts) {
       const items = alerts.map(a => {
         const li = document.createElement("li");
         li.className = "sev-" + String(a.severity).replace(/[^a-z]/gi, "");
@@ -163,9 +162,7 @@
       document.getElementById("alert-list").replaceChildren(...items);
     }
 
-    async function refreshDevices() {
-      const res = await fetch("/devices?window=300");
-      const devices = await res.json();
+    function renderDevices(devices) {
       const rows = devices.map(d => {
         const tr = document.createElement("tr");
         [d.ip, d.packets, d.bytes, d.protocols.join(", "), fmtTime(d.last_seen)]
@@ -184,9 +181,7 @@
 
     let chart = null;
 
-    async function refreshStats() {
-      const res = await fetch("/stats?window=60");
-      const stats = await res.json();
+    function renderStats(stats) {
       const labels = Object.keys(stats.by_protocol);
       const values = labels.map(k => stats.by_protocol[k]);
       document.getElementById("chart-total").textContent =
@@ -209,23 +204,81 @@
       }
     }
 
-    async function refresh() {
+    function setStatus(text) {
+      document.getElementById("status").textContent = text;
+    }
+
+    // ---- polling fallback: used while the WebSocket is not connected ----
+
+    async function getJson(url) {
+      const res = await fetch(url);
+      return res.json();
+    }
+
+    async function refreshPackets() {
+      renderPackets(await getJson(packetUrl()));
+    }
+
+    async function poll() {
       try {
-        await refreshPackets();
-        await refreshAlerts();
-        await refreshStats();
-        await refreshDevices();
-        document.getElementById("status").textContent = "live - " + new Date().toLocaleTimeString();
+        renderPackets(await getJson(packetUrl()));
+        renderAlerts(await getJson("/alerts?limit=20"));
+        renderStats(await getJson("/stats?window=60"));
+        renderDevices(await getJson("/devices?window=300"));
+        setStatus("live (polling) - " + new Date().toLocaleTimeString());
       } catch (err) {
-        document.getElementById("status").textContent = "offline";
+        setStatus("offline");
       }
+    }
+
+    let pollTimer = null;
+    function startPolling() {
+      if (pollTimer) return;
+      poll();
+      pollTimer = setInterval(poll, POLL_MS);
+    }
+    function stopPolling() {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+
+    // ---- WebSocket: the server pushes every update, filters go in the URL ----
+
+    let socket = null;
+    let reconnectTimer = null;
+
+    function connectSocket() {
+      clearTimeout(reconnectTimer);
+      if (socket) {
+        socket.onclose = null;
+        socket.close();
+      }
+      const scheme = location.protocol === "https:" ? "wss://" : "ws://";
+      socket = new WebSocket(scheme + location.host + "/ws/live?" + filterParams().toString());
+      socket.onmessage = event => {
+        const data = JSON.parse(event.data);
+        stopPolling();
+        renderPackets(data.packets);
+        renderAlerts(data.alerts);
+        renderStats(data.stats);
+        renderDevices(data.devices);
+        setStatus("live (push) - " + new Date().toLocaleTimeString());
+      };
+      socket.onclose = () => {
+        setStatus("reconnecting...");
+        startPolling();
+        reconnectTimer = setTimeout(connectSocket, RECONNECT_MS);
+      };
     }
 
     let debounce = null;
     function onFilterChange() {
-      clearTimeout(debounce);
       updateExportLinks();
-      debounce = setTimeout(() => refreshPackets().catch(() => {}), 250);
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        if (pollTimer) refreshPackets().catch(() => {});
+        else connectSocket();  // new filters are applied by opening a new stream
+      }, 250);
     }
     ["filter-protocol", "filter-host", "filter-search"].forEach(id => {
       document.getElementById(id).addEventListener("input", onFilterChange);
@@ -237,8 +290,7 @@
       onFilterChange();
     });
 
-    refresh();
-    setInterval(refresh, POLL_MS);
+    connectSocket();
   </script>
 </body>
 </html>
