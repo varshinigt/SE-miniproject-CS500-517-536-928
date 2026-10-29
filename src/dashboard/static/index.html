@@ -48,6 +48,15 @@
         <p id="chart-total">waiting for data...</p>
         <canvas id="protocol-chart" height="160"></canvas>
       </section>
+      <section id="device-panel">
+        <h2>Device inventory</h2>
+        <table>
+          <thead>
+            <tr><th>Device</th><th>Packets</th><th>Bytes</th><th>Protocols</th><th>Last seen</th></tr>
+          </thead>
+          <tbody id="device-rows"></tbody>
+        </table>
+      </section>
       <section id="alert-feed">
         <h2>Alerts</h2>
         <ul id="alert-list"></ul>
@@ -98,6 +107,25 @@
       document.getElementById("alert-list").replaceChildren(...items);
     }
 
+    async function refreshDevices() {
+      const res = await fetch("/devices?window=300");
+      const devices = await res.json();
+      const rows = devices.map(d => {
+        const tr = document.createElement("tr");
+        [d.ip, d.packets, d.bytes, d.protocols.join(", "), fmtTime(d.last_seen)]
+          .forEach(v => tr.appendChild(cell(v)));
+        return tr;
+      });
+      if (rows.length === 0) {
+        const tr = document.createElement("tr");
+        const td = cell("No devices seen yet");
+        td.colSpan = 5;
+        tr.appendChild(td);
+        rows.push(tr);
+      }
+      document.getElementById("device-rows").replaceChildren(...rows);
+    }
+
     let chart = null;
 
     async function refreshStats() {
@@ -130,6 +158,7 @@
         await refreshPackets();
         await refreshAlerts();
         await refreshStats();
+        await refreshDevices();
         document.getElementById("status").textContent = "live - " + new Date().toLocaleTimeString();
       } catch (err) {
         document.getElementById("status").textContent = "offline";
