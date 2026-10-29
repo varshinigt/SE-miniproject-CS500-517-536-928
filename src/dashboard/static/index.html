@@ -15,6 +15,12 @@
     @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
     .side { display: grid; gap: 16px; align-content: start; }
     canvas { max-width: 100%; }
+    #filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    #filter-bar input, #filter-bar select, #filter-bar button {
+      background: #222c36; color: #e6e6e6; border: 1px solid #2a343f; border-radius: 4px;
+      padding: 6px 8px; font-size: 13px; }
+    #filter-bar input { flex: 1 1 140px; min-width: 0; }
+    #filter-bar button { cursor: pointer; }
     #chart-total { font-size: 12px; color: #8b98a5; margin: 0 0 8px; }
     section { background: #1a2129; border-radius: 8px; padding: 12px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -35,6 +41,15 @@
   <main>
     <section>
       <h2>Live packets</h2>
+      <form id="filter-bar" onsubmit="return false">
+        <select id="filter-protocol" aria-label="Protocol">
+          <option value="">All protocols</option>
+          <option>TCP</option><option>UDP</option><option>DNS</option><option>ARP</option><option>ICMP</option>
+        </select>
+        <input id="filter-host" type="text" placeholder="Host (exact IP)" aria-label="Host">
+        <input id="filter-search" type="search" placeholder="Search packets" aria-label="Search">
+        <button id="filter-clear" type="button">Clear</button>
+      </form>
       <table>
         <thead>
           <tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Length</th><th>Info</th></tr>
@@ -78,8 +93,20 @@
       return td;
     }
 
+    // Builds "/packets?limit=50&protocol=..&host=..&q=.." from the filter bar.
+    function packetUrl() {
+      const params = new URLSearchParams({ limit: "50" });
+      const protocol = document.getElementById("filter-protocol").value;
+      const host = document.getElementById("filter-host").value.trim();
+      const q = document.getElementById("filter-search").value.trim();
+      if (protocol) params.set("protocol", protocol);
+      if (host) params.set("host", host);
+      if (q) params.set("q", q);
+      return "/packets?" + params.toString();
+    }
+
     async function refreshPackets() {
-      const res = await fetch("/packets?limit=50");
+      const res = await fetch(packetUrl());
       const packets = await res.json();
       const rows = packets.map(p => {
         const tr = document.createElement("tr");
@@ -164,6 +191,21 @@
         document.getElementById("status").textContent = "offline";
       }
     }
+
+    let debounce = null;
+    function onFilterChange() {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => refreshPackets().catch(() => {}), 250);
+    }
+    ["filter-protocol", "filter-host", "filter-search"].forEach(id => {
+      document.getElementById(id).addEventListener("input", onFilterChange);
+    });
+    document.getElementById("filter-clear").addEventListener("click", () => {
+      document.getElementById("filter-protocol").value = "";
+      document.getElementById("filter-host").value = "";
+      document.getElementById("filter-search").value = "";
+      onFilterChange();
+    });
 
     refresh();
     setInterval(refresh, POLL_MS);
