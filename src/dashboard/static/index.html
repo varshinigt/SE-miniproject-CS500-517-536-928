@@ -21,6 +21,10 @@
       padding: 6px 8px; font-size: 13px; }
     #filter-bar input { flex: 1 1 140px; min-width: 0; }
     #filter-bar button { cursor: pointer; }
+    .export { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px;
+              font-size: 12px; color: #8b98a5; }
+    .export a { color: #58a6ff; text-decoration: none; border: 1px solid #2a343f; border-radius: 4px;
+                padding: 4px 8px; }
     #chart-total { font-size: 12px; color: #8b98a5; margin: 0 0 8px; }
     section { background: #1a2129; border-radius: 8px; padding: 12px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -56,6 +60,11 @@
         </thead>
         <tbody id="packet-rows"></tbody>
       </table>
+      <div class="export" id="export-packets">
+        Export these packets:
+        <a id="export-packets-csv" href="/export/packets?format=csv" download>CSV</a>
+        <a id="export-packets-json" href="/export/packets?format=json" download>JSON</a>
+      </div>
     </section>
     <div class="side">
       <section id="chart-panel">
@@ -75,6 +84,11 @@
       <section id="alert-feed">
         <h2>Alerts</h2>
         <ul id="alert-list"></ul>
+        <div class="export" id="export-alerts">
+          Export alerts:
+          <a id="export-alerts-csv" href="/export/alerts?format=csv" download>CSV</a>
+          <a id="export-alerts-json" href="/export/alerts?format=json" download>JSON</a>
+        </div>
       </section>
     </div>
   </main>
@@ -93,16 +107,31 @@
       return td;
     }
 
-    // Builds "/packets?limit=50&protocol=..&host=..&q=.." from the filter bar.
-    function packetUrl() {
-      const params = new URLSearchParams({ limit: "50" });
+    // Current filter bar values as query parameters (protocol, host, q).
+    function filterParams() {
+      const params = new URLSearchParams();
       const protocol = document.getElementById("filter-protocol").value;
       const host = document.getElementById("filter-host").value.trim();
       const q = document.getElementById("filter-search").value.trim();
       if (protocol) params.set("protocol", protocol);
       if (host) params.set("host", host);
       if (q) params.set("q", q);
+      return params;
+    }
+
+    function packetUrl() {
+      const params = filterParams();
+      params.set("limit", "50");
       return "/packets?" + params.toString();
+    }
+
+    // The packet export links always download exactly what the filters select.
+    function updateExportLinks() {
+      ["csv", "json"].forEach(fmt => {
+        const params = filterParams();
+        params.set("format", fmt);
+        document.getElementById("export-packets-" + fmt).href = "/export/packets?" + params.toString();
+      });
     }
 
     async function refreshPackets() {
@@ -195,6 +224,7 @@
     let debounce = null;
     function onFilterChange() {
       clearTimeout(debounce);
+      updateExportLinks();
       debounce = setTimeout(() => refreshPackets().catch(() => {}), 250);
     }
     ["filter-protocol", "filter-host", "filter-search"].forEach(id => {
