@@ -1,19 +1,21 @@
-"""GET /packets: latest captured packets, newest first."""
-from typing import List
+"""GET /packets: latest captured packets, newest first, with optional filters."""
+from typing import List, Optional
 
 from fastapi import APIRouter, Query, Request
 
-from .. import db
+from .. import queries
 
 router = APIRouter()
 
 
 @router.get("/packets")
-def list_packets(request: Request, limit: int = Query(100, ge=1, le=1000)) -> List[dict]:
-    with db.connect(request.app.state.db_path) as conn:
-        rows = conn.execute(
-            "SELECT id, ts, src, dst, protocol, length, info "
-            "FROM packets ORDER BY ts DESC, id DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
-    return [dict(row) for row in rows]
+def list_packets(
+    request: Request,
+    limit: int = Query(100, ge=1, le=1000),
+    protocol: Optional[str] = Query(None, max_length=20),
+    host: Optional[str] = Query(None, max_length=64),
+    q: Optional[str] = Query(None, max_length=100),
+) -> List[dict]:
+    return queries.fetch_packets(
+        request.app.state.db_path, limit=limit, protocol=protocol, host=host, q=q
+    )
