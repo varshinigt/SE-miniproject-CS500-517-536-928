@@ -13,6 +13,9 @@
     #status { font-size: 13px; color: #8fbf7f; }
     main { display: grid; gap: 16px; padding: 16px; grid-template-columns: 2fr 1fr; }
     @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+    .side { display: grid; gap: 16px; align-content: start; }
+    canvas { max-width: 100%; }
+    #chart-total { font-size: 12px; color: #8b98a5; margin: 0 0 8px; }
     section { background: #1a2129; border-radius: 8px; padding: 12px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #2a343f; white-space: nowrap; }
@@ -39,11 +42,19 @@
         <tbody id="packet-rows"></tbody>
       </table>
     </section>
-    <section id="alert-feed">
-      <h2>Alerts</h2>
-      <ul id="alert-list"></ul>
-    </section>
+    <div class="side">
+      <section id="chart-panel">
+        <h2>Traffic by protocol</h2>
+        <p id="chart-total">waiting for data...</p>
+        <canvas id="protocol-chart" height="160"></canvas>
+      </section>
+      <section id="alert-feed">
+        <h2>Alerts</h2>
+        <ul id="alert-list"></ul>
+      </section>
+    </div>
   </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
     const POLL_MS = 1000;
 
@@ -87,10 +98,38 @@
       document.getElementById("alert-list").replaceChildren(...items);
     }
 
+    let chart = null;
+
+    async function refreshStats() {
+      const res = await fetch("/stats?window=60");
+      const stats = await res.json();
+      const labels = Object.keys(stats.by_protocol);
+      const values = labels.map(k => stats.by_protocol[k]);
+      document.getElementById("chart-total").textContent =
+        stats.total + " packets in the last " + stats.window + " seconds";
+      if (typeof Chart === "undefined") return;  // chart library could not load (offline)
+      if (!chart) {
+        chart = new Chart(document.getElementById("protocol-chart"), {
+          type: "bar",
+          data: { labels, datasets: [{ label: "Packets", data: values, backgroundColor: "#58a6ff" }] },
+          options: {
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          },
+        });
+      } else {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
+      }
+    }
+
     async function refresh() {
       try {
         await refreshPackets();
         await refreshAlerts();
+        await refreshStats();
         document.getElementById("status").textContent = "live - " + new Date().toLocaleTimeString();
       } catch (err) {
         document.getElementById("status").textContent = "offline";
