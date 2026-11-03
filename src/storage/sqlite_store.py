@@ -95,7 +95,7 @@ class SQLiteStore:
                     data["dst_mac"],
                     data["src_ip"],
                     data["dst_ip"],
-                    data["protocol"],
+                    data["protocol"] or "UNKNOWN",
                     data["src_port"],
                     data["dst_port"],
                     data["length"],
