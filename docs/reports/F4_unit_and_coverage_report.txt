@@ -1,0 +1,69 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.0, pytest-9.1.1, pluggy-1.7.0
+rootdir: /Users/Varshini/SE-miniproject-CS500-517-536-928
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-7.1.0, anyio-4.15.1
+collected 189 items
+
+tests/test_detection/test_arp_spoof.py ........                          [  4%]
+tests/test_detection/test_engine.py ............                         [ 10%]
+tests/test_detection/test_models.py .......                              [ 14%]
+tests/test_detection/test_port_scan.py ...........                       [ 20%]
+tests/unit/test_alert_feed_ui.py ..                                      [ 21%]
+tests/unit/test_alerts_api.py .....                                      [ 23%]
+tests/unit/test_capture_stats.py ...........                             [ 29%]
+tests/unit/test_chart_ui.py ..                                           [ 30%]
+tests/unit/test_device_ui.py ..                                          [ 31%]
+tests/unit/test_devices_api.py ......                                    [ 34%]
+tests/unit/test_ethernet_capture.py ........                             [ 39%]
+tests/unit/test_export_api.py ........                                   [ 43%]
+tests/unit/test_export_ui.py ..                                          [ 44%]
+tests/unit/test_filter_ui.py ..                                          [ 45%]
+tests/unit/test_health.py ..                                             [ 46%]
+tests/unit/test_latency.py ........                                      [ 50%]
+tests/unit/test_live_ui.py ...                                           [ 52%]
+tests/unit/test_mobile_layout.py ....                                    [ 54%]
+tests/unit/test_packet_filters.py ........                               [ 58%]
+tests/unit/test_packets_api.py ......                                    [ 61%]
+tests/unit/test_parser_interface.py ...........                          [ 67%]
+tests/unit/test_pcap_session.py ..........                               [ 73%]
+tests/unit/test_protocol_parser.py ...............                       [ 80%]
+tests/unit/test_seed.py .....                                            [ 83%]
+tests/unit/test_sqlite_store.py .......                                  [ 87%]
+tests/unit/test_stats_api.py ....                                        [ 89%]
+tests/unit/test_ui.py ..                                                 [ 90%]
+tests/unit/test_wifi_ble_parser.py .............                         [ 97%]
+tests/unit/test_ws_live.py .....                                         [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /Users/Varshini/SE-miniproject-CS500-517-536-928/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /Users/Varshini/SE-miniproject-CS500-517-536-928/docs/reports/F4_unit_tests.xml -
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.13.0-final-0 _______________
+
+Name                               Stmts   Miss Branch BrPart  Cover   Missing
+------------------------------------------------------------------------------
+src/dashboard/__init__.py              0      0      0      0   100%
+src/dashboard/app.py                  14      0      2      0   100%
+src/dashboard/db.py                   18      0      0      0   100%
+src/dashboard/latency.py              75      8     10      2    88%   119-128, 142->145, 150
+src/dashboard/queries.py              27      0      0      0   100%
+src/dashboard/routes/__init__.py       0      0      0      0   100%
+src/dashboard/routes/alerts.py         7      0      0      0   100%
+src/dashboard/routes/devices.py        7      0      0      0   100%
+src/dashboard/routes/export.py        34      0      6      0   100%
+src/dashboard/routes/health.py         5      0      0      0   100%
+src/dashboard/routes/packets.py        7      0      0      0   100%
+src/dashboard/routes/stats.py          6      0      0      0   100%
+src/dashboard/routes/ui.py             8      0      0      0   100%
+src/dashboard/routes/ws.py            22      1      0      0    95%   53
+src/dashboard/seed.py                 46      1     10      1    96%   77
+------------------------------------------------------------------------------
+TOTAL                                276     10     28      3    96%
+Coverage XML written to file docs/reports/F4_coverage.xml
+======================== 189 passed, 1 warning in 5.56s ========================
