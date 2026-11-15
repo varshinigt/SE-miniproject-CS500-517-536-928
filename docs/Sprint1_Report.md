@@ -61,7 +61,7 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
 - **What went well:**
   - Delivered the REST API (health, packets, alerts), the live packet table and the alert feed, with 22 unit tests and 98% line and branch coverage.
   - CI caught a missing dependency and a Bandit warning on our first PRs; both were fixed the same day (#47 and #49).
-  - Rotating reviewers kept every PR reviewed before merge.
+  - A teammate reviewed and merged each PR.
 - **What to improve:**
   - Replace polling with WebSocket push and measure dashboard latency against NFR-PERF-03 (both done in Sprint 2).
   - Align the dashboard queries with the final parser schema once F2 is integrated.
