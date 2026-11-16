@@ -6,10 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from src.common.models import NormalizedRecord
+from src.common.zeek_models import ZeekEvent
 
 
 class SQLiteStore:
-    """Persist normalized packets, connections, and capture sessions."""
+    """Persist normalized packets, connections, sessions, and Zeek events."""
 
     def __init__(self, db_path: str | Path = "packets.db") -> None:
         self.db_path = str(db_path)
@@ -60,6 +61,19 @@ class SQLiteStore:
                     metadata TEXT
                 );
 
+                CREATE TABLE IF NOT EXISTS zeek_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp REAL NOT NULL,
+                    log_type TEXT NOT NULL,
+                    uid TEXT,
+                    src_ip TEXT,
+                    dst_ip TEXT,
+                    src_port INTEGER,
+                    dst_port INTEGER,
+                    protocol TEXT,
+                    metadata TEXT
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_packets_src_ip
                     ON packets(src_ip);
                 CREATE INDEX IF NOT EXISTS idx_packets_dst_ip
@@ -70,6 +84,13 @@ class SQLiteStore:
                     ON packets(dst_mac);
                 CREATE INDEX IF NOT EXISTS idx_packets_timestamp
                     ON packets(timestamp);
+
+                CREATE INDEX IF NOT EXISTS idx_zeek_timestamp
+                    ON zeek_events(timestamp);
+                CREATE INDEX IF NOT EXISTS idx_zeek_log_type
+                    ON zeek_events(log_type);
+                CREATE INDEX IF NOT EXISTS idx_zeek_uid
+                    ON zeek_events(uid);
                 """
             )
 
@@ -190,6 +211,80 @@ class SQLiteStore:
                 """,
                 (end_time, packet_count, session_id),
             )
+
+    def save_zeek_event(self, event: ZeekEvent) -> int:
+        """Save a Zeek event and return its database ID."""
+        with self.connection:
+            cursor = self.connection.execute(
+                """
+                INSERT INTO zeek_events (
+                    timestamp, log_type, uid,
+                    src_ip, dst_ip, src_port, dst_port,
+                    protocol, metadata
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    event.timestamp,
+                    event.log_type,
+                    event.uid,
+                    event.src_ip,
+                    event.dst_ip,
+                    event.src_port,
+                    event.dst_port,
+                    event.protocol,
+                    json.dumps(event.metadata),
+                ),
+            )
+
+        return int(cursor.lastrowid)
+
+    def get_zeek_event(self, event_id: int) -> dict[str, Any] | None:
+        """Retrieve one Zeek event by database ID."""
+        row = self.connection.execute(
+            "SELECT * FROM zeek_events WHERE id = ?",
+            (event_id,),
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        result = dict(row)
+        result["metadata"] = json.loads(result["metadata"] or "{}")
+        return result
+
+    def list_zeek_events(
+        self,
+        limit: int = 100,
+        log_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return recent Zeek events, optionally filtered by log type."""
+        if log_type is None:
+            rows = self.connection.execute(
+                """
+                SELECT * FROM zeek_events
+                ORDER BY timestamp DESC, id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        else:
+            rows = self.connection.execute(
+                """
+                SELECT * FROM zeek_events
+                WHERE log_type = ?
+                ORDER BY timestamp DESC, id DESC
+                LIMIT ?
+                """,
+                (log_type, limit),
+            ).fetchall()
+
+        results = []
+        for row in rows:
+            result = dict(row)
+            result["metadata"] = json.loads(result["metadata"] or "{}")
+            results.append(result)
+
+        return results
 
     def close(self) -> None:
         """Close the SQLite connection."""
