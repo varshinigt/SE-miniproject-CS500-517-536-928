@@ -172,15 +172,18 @@ class ZeekLogParser:
             raise ValueError("poll_interval must be positive")
 
         with open(file_path, "r", encoding="utf-8") as file:
-            while stop_event is None or not stop_event.is_set():
+            while True:
                 line = file.readline()
 
                 if line:
                     event = self.parse_line(line)
                     if event is not None:
                         yield event
+                elif stop_event is not None and stop_event.is_set():
+                    break
                 else:
                     time.sleep(poll_interval)
+
 
 def ingest_file(
     file_path: str | Path,
@@ -218,4 +221,3 @@ def follow_and_store(
         saved_count += 1
 
     return saved_count
-

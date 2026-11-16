@@ -10,11 +10,11 @@ Usage:
 import argparse
 import random
 
-_rng = random.SystemRandom()
 import time
 
 from . import db
 
+_rng = random.SystemRandom()
 PROTOCOLS = ["TCP", "UDP", "DNS", "ARP", "ICMP"]
 HOSTS = ["192.168.1.10", "192.168.1.23", "192.168.1.45", "192.168.1.1", "8.8.8.8", "142.250.77.46"]
 SAMPLE_ALERTS = [

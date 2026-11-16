@@ -132,7 +132,12 @@ The Pocket Packet Sniffer operates as an autonomous edge appliance. It acts as a
 
 ## 4. Analysis Models
 
-### 4.1 Use Case Diagram (System-Wide)
+### 4.1 Use Case Model (System-Wide)
+
+#### 4.1.1 Use Case Diagram
+The following UML Use Case model illustrates the primary actors interacting with the Pocket Packet Sniffer system boundary, along with the core and included subordinate use cases:
+
+![Figure 4.1: UML Use Case Diagram](../phase-1-deliverables/diagrams/use_case_diagram.png)
 
 ```mermaid
 graph LR
@@ -174,6 +179,55 @@ graph LR
     Analyst --> UC4
 ```
 
+#### 4.1.2 Actor Descriptions
+* **Network Administrator:** Responsible for monitoring local subnet performance, managing capture interfaces, verifying device inventory, and assessing bandwidth distribution across network segments.
+* **Security Analyst:** Focuses on detecting active network anomalies (ARP cache poisoning, port scans, wireless deauthentication floods, rogue APs, BLE floods), reviewing structured forensic evidence, and exporting session captures for offline incident response.
+
+#### 4.1.3 Primary Use Case Specifications
+* **UC-01: Capture Network Traffic**
+  * **Primary Actor:** Network Administrator / Security Analyst
+  * **Preconditions:** Network interfaces (`eth0`, `wlan0mon`, `hci0`) or remote ESP32 probes are accessible with appropriate Linux capabilities (`CAP_NET_RAW`, `CAP_NET_ADMIN`).
+  * **Trigger:** Operator activates packet capture session via command line or dashboard control.
+  * **Main Success Scenario:**
+    1. System initializes raw sockets on designated interfaces.
+    2. Background channel hopper rotates wireless channels 1–13 at 250ms intervals.
+    3. Captured frames are streamed to PCAP session files and the protocol parser queue (`«include» SUB-01`).
+    4. PCAP files are automatically rotated upon reaching 50MB or 15 minutes.
+  * **Postconditions:** Raw packet buffers are continuously supplied to the parsing pipeline without frame corruption.
+
+* **UC-02: Analyze Traffic & Detect Threats**
+  * **Primary Actor:** Security Analyst / Network Administrator
+  * **Preconditions:** Raw frame stream is actively delivered from F1 capture modules.
+  * **Trigger:** Arrival of incoming network packets at the parsing queue.
+  * **Main Success Scenario:**
+    1. Protocol parser decodes L2–L7 headers (`«include» SUB-02`).
+    2. Extracted network metadata is enriched with Zeek telemetry (`«include» SUB-03`).
+    3. `NormalizedRecord` objects are dispatched through registered `BaseDetector` rules in `DetectionEngine` (`«include» SUB-04`).
+    4. Upon rule threshold violation, a standardized `Alert` object is generated with forensic evidence and remediation guidance (`«include» SUB-05`).
+    5. Alerts are persisted to SQLite and broadcast via WebSocket to active monitoring clients.
+  * **Postconditions:** Alerts are indexed and rendered in the dashboard alert banner with sub-second latency.
+
+* **UC-03: Monitor Network & Devices**
+  * **Primary Actor:** Network Administrator / Security Analyst
+  * **Preconditions:** Dashboard backend service is running and accessible on port 8000.
+  * **Trigger:** Client opens web dashboard at `http://<pi-ip>:8000/`.
+  * **Main Success Scenario:**
+    1. Backend establishes WebSocket connection (`/ws/live`) and transmits initial telemetry state.
+    2. Incoming packets update live throughput metrics and protocol distribution charts in real time.
+    3. Device discovery engine inspects MAC addresses, performs IEEE OUI vendor resolution, and updates the device inventory table (`«include» SUB-06`).
+  * **Postconditions:** Live dashboard displays current packet stream, device inventory, and active alerts.
+
+* **UC-04: Investigate & Export Records**
+  * **Primary Actor:** Security Analyst
+  * **Preconditions:** SQLite historical packet and alert tables contain stored session data.
+  * **Trigger:** Analyst applies query filters or requests forensic export.
+  * **Main Success Scenario:**
+    1. Analyst filters historical traffic by interface, protocol, IP, or MAC substring (`«include» SUB-07`).
+    2. Backend queries SQLite indexed tables and returns matching paginated records within 500ms.
+    3. Analyst initiates export in PCAP, CSV, or JSON format (`«include» SUB-08`).
+    4. System packages records and delivers downloadable file stream with valid MIME headers.
+  * **Postconditions:** Forensic export file is saved locally by the analyst for offline verification.
+
 ---
 
 ## 5. System Features
@@ -192,11 +246,11 @@ graph LR
    * **Response:** Ingestion worker receives UDP datagrams, extracts payload headers, and feeds them into the unified capture buffer.
 
 #### 5.1.3 Functional Requirements
-* **REQ-F1-01 (Promiscuous Ethernet Capture):** The system shall capture all Ethernet frames on designated interfaces (`eth0`) regardless of destination MAC address.
-* **REQ-F1-02 (WiFi Monitor Mode & Channel Hopping):** The system shall put supported wireless adapters into 802.11 monitor mode and hop across 2.4 GHz channels 1–13 at a configurable frequency (default 250ms).
-* **REQ-F1-03 (Bluetooth Low Energy Capture):** The system shall capture Bluetooth Low Energy advertisement frames (`ADV_IND`, `ADV_NONCONN_IND`) using BlueZ HCI interfaces.
-* **REQ-F1-04 (Remote ESP32 Ingestion):** The system shall listen on UDP port 5555 to ingest raw wireless frames forwarded by external ESP32 sniffer probes.
-* **REQ-F1-05 (PCAP Session Management & Rotation):** The system shall save captured traffic into standard PCAP format files with automatic session rotation based on file size (default: 50MB) or time limit (default: 15 minutes).
+* **REQ-F1-01 (Promiscuous Ethernet Capture):** The system shall capture all Ethernet frames on designated interfaces (`eth0`) regardless of destination MAC address, sustaining sustained ingestion rates of at least 1,000 packets per second with packet loss $< 0.1\%$.
+* **REQ-F1-02 (WiFi Monitor Mode & Channel Hopping):** The system shall put supported wireless adapters into 802.11 monitor mode and hop across 2.4 GHz channels 1–13 at a configurable frequency of $250\text{ ms} \pm 25\text{ ms}$ per channel.
+* **REQ-F1-03 (Bluetooth Low Energy Capture):** The system shall capture Bluetooth Low Energy advertisement frames (`ADV_IND`, `ADV_NONCONN_IND`) using BlueZ HCI interfaces, decoding header metadata within $\le 50\text{ ms}$ of arrival.
+* **REQ-F1-04 (Remote ESP32 Ingestion):** The system shall listen on UDP port 5555 to ingest raw wireless frames forwarded by external ESP32 sniffer probes at rates up to 500 packets per second without buffer overflow.
+* **REQ-F1-05 (PCAP Session Management & Rotation):** The system shall save captured traffic into standard PCAP format files with automatic session rotation triggering within 1 second of reaching a file size limit of $50\text{ MB} \pm 1\text{ MB}$ or a time limit of $15\text{ minutes} \pm 5\text{ seconds}$.
 
 ---
 
@@ -207,16 +261,16 @@ graph LR
 
 #### 5.2.2 Stimulus/Response Sequences
 1. **Stimulus:** Raw Ethernet frame arrives from F1.
-   * **Response:** Parser decodes Ethernet header, IP header, and transport layer (TCP/UDP/ICMP), emitting a `NormalizedRecord` in under 1ms.
+   * **Response:** Parser decodes Ethernet header, IP header, and transport layer (TCP/UDP/ICMP), emitting a `NormalizedRecord` in $\le 1.0\text{ ms}$.
 2. **Stimulus:** Zeek log daemon produces a `conn.log` entry.
-   * **Response:** Zeek ingestion worker parses JSON/TSV connection record, enriching the corresponding connection table in SQLite.
+   * **Response:** Zeek ingestion worker parses JSON/TSV connection record, enriching the corresponding connection table in SQLite within 100ms.
 
 #### 5.2.3 Functional Requirements
-* **REQ-F2-01 (Multi-Layer Protocol Decoding):** The system shall decode Link, Network, Transport, and Application protocols including Ethernet, 802.11, ARP, IPv4, TCP, UDP, ICMP, and DNS.
-* **REQ-F2-02 (Unified Packet Schema Normalization):** The system shall map disparate frame types (Ethernet, WiFi, BLE) into a unified `NormalizedRecord` data model.
-* **REQ-F2-03 (Zeek Telemetry Integration):** The system shall run Zeek against live and recorded traffic and ingest generated Zeek logs (`conn.log`, `dns.log`) into the metadata store.
-* **REQ-F2-04 (SQLite Storage Layer):** The system shall persist parsed packets, active connections, and session metadata into SQLite with indexed columns for IP, MAC, and timestamp.
-* **REQ-F2-05 (Pluggable Parser Architecture):** The system shall provide an abstract protocol parser interface allowing new protocol dissectors to be added without modifying existing parser pipelines.
+* **REQ-F2-01 (Multi-Layer Protocol Decoding):** The system shall decode Link, Network, Transport, and Application protocols including Ethernet, 802.11, ARP, IPv4, TCP, UDP, ICMP, and DNS with per-packet parsing latency $\le 1.0\text{ ms}$.
+* **REQ-F2-02 (Unified Packet Schema Normalization):** The system shall map disparate frame types (Ethernet, WiFi, BLE) into a unified `NormalizedRecord` data model with 100% field type validation and zero schema translation exceptions.
+* **REQ-F2-03 (Zeek Telemetry Integration):** The system shall run Zeek against live and recorded traffic and ingest generated Zeek logs (`conn.log`, `dns.log`) into the metadata store at processing rates $\ge 500\text{ lines/sec}$.
+* **REQ-F2-04 (SQLite Storage Layer):** The system shall persist parsed packets, active connections, and session metadata into SQLite with indexed columns for IP, MAC, and timestamp, executing batch writes of up to 500 records in $\le 50\text{ ms}$ in WAL mode.
+* **REQ-F2-05 (Pluggable Parser Architecture):** The system shall provide an abstract protocol parser interface allowing new protocol dissectors to be added and registered at runtime without modifying existing parser pipelines.
 
 ---
 
@@ -227,25 +281,25 @@ graph LR
 
 #### 5.3.2 Stimulus/Response Sequences
 1. **Stimulus:** F2 Parser streams a normalized ARP reply where the claimed IP is bound to a new, conflicting MAC address.
-   * **Response:** Detection Engine flags an IP-MAC conflict, generates a `CRITICAL` severity `Alert` object with offending MAC addresses and timestamps, and emits it to the alert dispatch pipeline within 1 second.
+   * **Response:** Detection Engine flags an IP-MAC conflict, generates a `CRITICAL` severity `Alert` object with offending MAC addresses and timestamps, and emits it to the alert dispatch pipeline in $\le 1.0\text{ second}$.
 2. **Stimulus:** A remote host sends SYN packets across 15 distinct destination ports within a 5-second sliding window.
    * **Response:** Detection Engine flags a horizontal/vertical port scan, generates a `HIGH` severity `Alert` containing the attacker IP, scanned port range, and packet counts.
-3. **Stimulus:** A WiFi client receives bursts of 802.11 Deauthentication frames (subtype 0x000C) exceeding 15 frames per second.
-   * **Response:** Detection Engine flags a WiFi Deauth Flood attack, generates a `CRITICAL` severity `Alert` detailing targeted BSSID, client MAC, and frame rate.
-4. **Stimulus:** An unrecognized BLE peripheral transmits excessive advertisement packets (`ADV_IND`) exceeding rate thresholds.
-   * **Response:** Detection Engine flags a BLE Advertisement Flood / DoS, generates a `MEDIUM` severity `Alert` with advertiser MAC and burst volume.
+3. **Stimulus:** A WiFi client receives bursts of 802.11 Deauthentication frames (subtype 0x000C) exceeding 10 frames within a 2.0-second window.
+   * **Response:** Detection Engine flags a WiFi Deauth Flood attack, generates a `HIGH` severity `Alert` detailing targeted BSSID, client MAC, frame count, and PMF mitigation advice.
+4. **Stimulus:** An unrecognized BLE peripheral transmits excessive advertisement packets (`ADV_IND`) exceeding 20 packets/s or random MAC churning ($> 10$ distinct MACs in 2.0s).
+   * **Response:** Detection Engine flags a BLE Advertisement Flood / MAC Churning DoS, generates a `MEDIUM` severity `Alert` with advertiser MAC, rate metrics, and burst volume.
 
 #### 5.3.3 Functional Requirements
-* **REQ-F3-01 (ARP Spoofing / Cache Poisoning Detection):** The system shall maintain a dynamic IP-to-MAC baseline table and detect when an incoming ARP packet attempts to associate an existing IP with an unauthorized or conflicting MAC address.
-* **REQ-F3-02 (ARP Reply Flood Detection):** The system shall monitor the rate of unsolicited/gratuitous ARP replies per MAC address and generate an alert if the count exceeds configurable threshold $N$ within sliding window $T$ seconds (default: 5 replies in 3s).
-* **REQ-F3-03 (TCP/UDP Port Scan Detection):** The system shall track connection attempts from source IP addresses across multiple destination ports within a configurable sliding window and trigger an alert upon detecting horizontal sweeps or vertical port scans.
-* **REQ-F3-04 (DNS Anomaly & Tunneling Detection):** The system shall analyze DNS query frequency, domain label length, entropy, and NXDOMAIN error ratios to detect DNS tunneling, domain generation algorithms (DGA), and high-volume DNS reconnaissance.
-* **REQ-F3-05 (WiFi 802.11 Deauthentication Flood Detection):** The system shall monitor 802.11 management frames (subtypes 0x000C Deauth and 0x000A Disassoc) and trigger an alert if the frame rate directed at or broadcast by an AP exceeds the configurable flood threshold.
-* **REQ-F3-06 (Rogue and Evil-Twin AP Detection):** The system shall inspect beacon and probe response frames to detect duplicate SSIDs operating with unexpected BSSIDs, differing channel configurations, or degraded encryption suites.
-* **REQ-F3-07 (BLE Advertisement Flood & Spoofing Detection):** The system shall inspect Bluetooth Low Energy advertisement packets (`ADV_IND`, `ADV_NONCONN_IND`) to identify rapid MAC churning and high-rate advertising bursts indicating DoS or device spoofing.
-* **REQ-F3-08 (Configurable Thresholds & Sliding Time Windows):** The system shall permit fine-tuning of rate thresholds, detection windows, whitelist IP/MAC entries, and rule activation states through a structured configuration file or API without recompilation.
-* **REQ-F3-09 (Standardized Alert Generation and Evidence Packaging):** The system shall package every detected anomaly into a structured `Alert` schema including unique `alert_id`, epoch `timestamp`, `threat_type`, `severity` (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), `evidence` dictionary, and `mitigation` guidance.
-* **REQ-F3-10 (Pluggable Detection Rule Engine Architecture):** The system shall provide an extensible `BaseDetector` interface and `DetectionEngine` coordinator allowing detection rules to be dynamically registered, executed, and reset without modifying core pipeline code.
+* **REQ-F3-01 (ARP Spoofing / Cache Poisoning Detection):** The system shall maintain a dynamic IP-to-MAC baseline table and detect when an incoming ARP packet attempts to associate an existing IP with an unauthorized or conflicting MAC address, generating a `CRITICAL` alert within $\le 1.0\text{ second}$.
+* **REQ-F3-02 (ARP Reply Flood Detection):** The system shall monitor the rate of unsolicited/gratuitous ARP replies per MAC address and generate a `HIGH` severity alert if the count exceeds configurable threshold $N$ within sliding window $T$ seconds (default: 5 replies in 3.0s) with automatic sliding-window time eviction.
+* **REQ-F3-03 (TCP/UDP Port Scan Detection):** The system shall track connection attempts from source IP addresses across multiple destination ports within a configurable sliding window and trigger a `HIGH` severity alert upon detecting horizontal sweeps or vertical port scans (default: $\ge 15$ distinct ports in 5.0s).
+* **REQ-F3-04 (DNS Anomaly & Tunneling Detection):** The system shall provide rule hooks to analyze DNS query frequency, domain label length, entropy ($> 3.8\text{ bits/char}$), and NXDOMAIN error ratios to detect DNS tunneling and high-volume reconnaissance (status: deferred to hardware release phase; documented in `docs/Deviations.md`).
+* **REQ-F3-05 (WiFi 802.11 Deauthentication Flood Detection):** The system shall monitor 802.11 management frames (subtypes 0x000C Deauth and 0x000A Disassoc) and trigger a `HIGH` severity alert if the frame rate directed at or broadcast by an AP exceeds the configurable flood threshold (default: $\ge 10$ frames in 2.0s).
+* **REQ-F3-06 (Rogue and Evil-Twin AP Detection):** The system shall inspect beacon and probe response frames to detect duplicate SSIDs operating with unexpected BSSIDs, differing channel configurations, or degraded encryption suites (WPA2/WPA3 to OPEN), emitting alerts within $\le 2.0\text{ seconds}$ with storm deduplication.
+* **REQ-F3-07 (BLE Advertisement Flood & Spoofing Detection):** The system shall inspect Bluetooth Low Energy advertisement packets (`ADV_IND`, `ADV_NONCONN_IND`) to identify rapid MAC churning ($> 10$ random MACs in 2.0s) and high-rate advertising bursts ($\ge 20\text{ adv/s}$) indicating DoS or device spoofing.
+* **REQ-F3-08 (Configurable Thresholds & Sliding Time Windows):** The system shall permit fine-tuning of rate thresholds, detection windows, whitelist IP/MAC entries, and rule activation states through a structured JSON configuration module (`src/detection/config.py`) supporting dynamic in-memory reloads in $\le 100\text{ ms}$ without restarting the engine.
+* **REQ-F3-09 (Standardized Alert Generation and Evidence Packaging):** The system shall package every detected anomaly into a structured `Alert` schema including unique `alert_id` (UUIDv4), epoch `timestamp` (float), `threat_type` (enum), `severity` (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), forensic `evidence` dictionary, and `mitigation` guidance string.
+* **REQ-F3-10 (Pluggable Detection Rule Engine Architecture):** The system shall provide an extensible `BaseDetector` interface and `DetectionEngine` coordinator allowing detection rules to be dynamically registered, executed, and reset with per-packet dispatch overhead $\le 0.5\text{ ms}$.
 
 ---
 
@@ -256,38 +310,44 @@ graph LR
 
 #### 5.4.2 Stimulus/Response Sequences
 1. **Stimulus:** Client browser connects to WebSocket endpoint `ws://<pi-ip>:8000/ws/live`.
-   * **Response:** Backend streams live bandwidth metrics, packet rates, and active alert events with sub-second latency.
+   * **Response:** Backend streams live bandwidth metrics, packet rates, and active alert events with measured sub-second latency (median 377ms, p95 507ms).
 2. **Stimulus:** New MAC address observed on the wire or wireless channel.
-   * **Response:** Device inventory worker queries local IEEE OUI database, creates device entry with manufacturer name, and updates dashboard inventory view.
+   * **Response:** Device inventory worker queries local IEEE OUI database, creates device entry with manufacturer name within $\le 5\text{ ms}$, and updates dashboard inventory view.
 3. **Stimulus:** User applies filter `protocol=DNS` and clicks "Export to PCAP".
-   * **Response:** Backend queries SQLite database, assembles matching packets, and streams a downloadable PCAP file.
+   * **Response:** Backend queries SQLite database, assembles matching packets, and streams a downloadable PCAP file with throughput $\ge 1\text{ MB/s}$.
 
 #### 5.4.3 Functional Requirements
-* **REQ-F4-01 (REST & WebSocket Backend API):** The system shall expose REST API endpoints for packets, alerts, and system health, alongside a WebSocket channel streaming live traffic statistics.
-* **REQ-F4-02 (Live Web Dashboard & Visualization):** The system shall render a responsive web dashboard with a real-time packet stream table, active alert feed, and dynamic protocol distribution charts.
-* **REQ-F4-03 (Device Inventory & MAC Fingerprinting):** The system shall identify unique network hosts, resolve manufacturer details via IEEE MAC OUI lookup, record BLE local names, and track first/last seen timestamps.
-* **REQ-F4-04 (Multi-Interface Search, Filtering & History):** The system shall allow users to search and filter historical records by interface, protocol, IP, MAC address, and time range.
-* **REQ-F4-05 (Session & Report Export):** The system shall allow users to export captured sessions and query results in PCAP, CSV, and JSON formats.
+* **REQ-F4-01 (REST & WebSocket Backend API):** The system shall expose REST API endpoints for packets, alerts, and system health with response times $\le 200\text{ ms}$ p95, alongside a WebSocket channel streaming live traffic updates at 1 Hz with polling fallback.
+* **REQ-F4-02 (Live Web Dashboard & Visualization):** The system shall render a responsive web dashboard with a real-time packet stream table supporting up to 100 visible rows, active alert feed, and dynamic protocol distribution charts updated every 1.0 second.
+* **REQ-F4-03 (Device Inventory & MAC Fingerprinting):** The system shall identify unique network hosts, resolve manufacturer details via IEEE MAC OUI lookup for $\ge 95\%$ of standard OUIs, record BLE local names, and track first/last seen timestamps.
+* **REQ-F4-04 (Multi-Interface Search, Filtering & History):** The system shall allow users to search and filter historical records by interface, protocol, IP, MAC address, and time range across 50,000+ database records with query latency $\le 500\text{ ms}$ p95.
+* **REQ-F4-05 (Session & Report Export):** The system shall allow users to export captured sessions and query results in PCAP, CSV, and JSON formats without record truncation.
 
 ---
 
 ## 6. Non-Functional Requirements
 
 ### 6.1 Performance Requirements
-* **NFR-PERF-01 (Lossless Capture):** The capture pipeline shall sustain up to 5,000 packets per second without packet drop on standard Raspberry Pi 4 hardware under typical lab traffic.
-* **NFR-PERF-02 (Bounded Parser Queue):** Protocol parsing and normalization shall process incoming packets concurrently, ensuring queue memory depth remains under 10,000 records.
-* **NFR-PERF-03 (Real-time Dashboard Latency):** Live metrics, packet feeds, and threat alerts shall appear on the client dashboard within 2.0 seconds of physical packet capture.
+* **NFR-PERF-01 (Lossless Capture Throughput):** The capture pipeline shall sustain up to 5,000 packets per second with packet drop $< 0.1\%$ on standard Raspberry Pi 4 hardware under typical lab traffic (sustained 1,000 pps verified in lab baseline).
+* **NFR-PERF-02 (Bounded Parser Queue Depth & Memory):** Protocol parsing and normalization shall process incoming packets concurrently, ensuring queue memory depth remains under 10,000 records and overall memory consumption remains $\le 512\text{ MB}$ under operational load.
+* **NFR-PERF-03 (Real-Time Dashboard & Alert Latency):** Live metrics, packet feeds, and threat alerts shall appear on the client dashboard within $\le 1.0\text{ second}$ of database write (experimentally measured: median $377\text{ ms}$, 95th percentile $507\text{ ms}$).
 
-### 6.2 Security Requirements (Lead: Ritu Ravish)
-* **SEC-01 (Static Application Security Testing):** All codebase modules shall be scanned via **Bandit** and **SonarQube**, maintaining zero high-severity or critical vulnerabilities before PR merge.
-* **SEC-02 (Resilient & Safe Packet Ingestion):** The detection engine and parser shall enforce defensive exception handling; malformed, fuzzed, or truncated packets shall be safely logged without crashing the process.
-* **SEC-03 (Dependency Vulnerability Governance):** All dependencies in `requirements.txt` shall be continuously scanned with `pip-audit`, ensuring no known critical CVEs.
-* **SEC-04 (Alert Data Integrity):** Alert records and evidentiary attributes stored in SQLite shall be immutable and tamper-resistant once recorded.
+### 6.2 Security Specification (Lead: Ritu Ravish)
+
+#### 6.2.1 Security Objectives
+* **SO-01 (System Availability & Adversarial Input Resilience):** Ensure that the packet capture, decoding, and threat detection pipelines remain continuously available and fully operational without process crashes, hangs, buffer overflows, or unhandled exceptions when subjected to malformed, fuzzed, truncated, out-of-order, or adversarial network packets.
+* **SO-02 (Forensic Data Integrity & Non-Repudiation):** Ensure that generated security alerts, forensic evidence payloads, and detection configuration states remain immutable, verifiable, and protected against unauthorized injection, tampering, supply-chain vulnerabilities, or configuration corruption.
+
+#### 6.2.2 Security Requirements
+* **SEC-01 (Static Application Security Testing & Automated Quality Gate):** All codebase modules across `src/` shall be continuously scanned via **Bandit** AST static analysis and **SonarQube**, enforcing a mandatory release gate of **zero High- and zero Medium-severity security vulnerabilities** (specifically guarding against CWE-78 command injection, CWE-89 SQL injection, insecure deserialization, and hardcoded secrets).
+* **SEC-02 (Defensive Input Validation & Fuzz-Proof Ingestion):** The detection engine (`DetectionEngine.validate_record`) and protocol parsers shall enforce strict boundary validation, range checking, and defensive exception isolation; invalid records—including NaN/infinite timestamps, out-of-bounds transport ports ($<0$ or $>65535$), payloads exceeding network MTU ($>65535$ bytes), or non-record objects—shall be safely quarantined, logged, and incremented in the `malformed_dropped` metric without crashing or interrupting inspection threads.
+* **SEC-03 (Dependency Vulnerability Governance):** All dependencies specified in `requirements.txt` and `requirements-dashboard.txt` shall be continuously audited using `pip-audit` against the PyPI Advisory Database and National Vulnerability Database (NVD), maintaining zero known critical Common Vulnerabilities and Exposures (CVEs).
+* **SEC-04 (Alert Immutability & Forensic Evidence Integrity):** Every generated alert record shall be instantiated as an immutable dataclass object assigned a unique UUIDv4 identifier, high-precision epoch timestamp, categorized severity rating, structured evidentiary JSON dictionary, and recommended remediation guidance before transmission to SQLite or the WebSocket broadcaster.
 
 ### 6.3 Software Quality Attributes
-* **NFR-USE-01 (Responsive Usability):** The web dashboard shall be fully responsive, rendering properly on both mobile browsers (viewport $\ge 375\text{px}$) and desktop screens ($\ge 1280\text{px}$).
-* **NFR-PORT-01 (Portable Embedded Deployment):** The complete software stack shall be deployable via Docker and systemd on a Raspberry Pi running Linux, automatically starting on system boot.
-* **NFR-QA-01 (Testability & Code Coverage):** The codebase shall achieve $\ge 85\%$ line and branch test coverage across all functional modules.
+* **NFR-USE-01 (Responsive Usability):** The web dashboard shall be fully responsive, rendering properly on both mobile browsers (viewport $\ge 375\text{px}$) and desktop screens ($\ge 1280\text{px}$) with zero horizontal scrolling or clipping of core metric tables.
+* **NFR-PORT-01 (Portable Embedded Deployment):** The complete software stack shall be deployable via Docker Compose and systemd on a Raspberry Pi running Debian/Raspberry Pi OS 64-bit, automatically initializing services within $\le 15\text{ seconds}$ of system boot.
+* **NFR-QA-01 (Testability & Code Coverage Gate):** The codebase shall achieve $\ge 85\%$ line and branch test coverage across all functional subsystems, verified through automated CI test runs (currently achieved: F3 Threat Detection $94\%$, F4 Dashboard $96\%$).
 
 ---
 
@@ -343,35 +403,35 @@ graph LR
 
 ### Appendix C: Requirements Traceability Matrix (RTM)
 
-| Sl. | Requirement ID | Requirement Description | Subsystem | Owner | Code File Reference | Unit Test ID | System Test ID |
+| Sl. | Requirement ID | Requirement Description | Subsystem | Owner | Code File Reference | Unit Test ID | System / Test Case ID |
 | :---: | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | **REQ-F1-01** | Promiscuous Ethernet Capture | Capture | Vishal | `src/capture/ethernet.py` | `UT_F1_01` | `ST_F1_01` |
-| 2 | **REQ-F1-02** | WiFi Monitor Mode & Hopping | Capture | Vishal | `src/capture/wifi.py` | `UT_F1_02` | `ST_F1_02` |
-| 3 | **REQ-F1-03** | BLE Advertisement Capture | Capture | Vishal | `src/capture/ble.py` | `UT_F1_03` | `ST_F1_03` |
-| 4 | **REQ-F1-04** | Remote ESP32 Frame Ingest | Capture | Vishal | `src/capture/esp32.py` | `UT_F1_04` | `ST_F1_04` |
-| 5 | **REQ-F1-05** | PCAP Session Recording & Rotation | Capture | Vishal | `src/capture/session.py` | `UT_F1_05` | `ST_F1_05` |
-| 6 | **REQ-F2-01** | Multi-Layer Protocol Decoding | Parser | Tejaswini | `src/parser/dissector.py` | `UT_F2_01` | `ST_F2_01` |
-| 7 | **REQ-F2-02** | Unified Schema Normalization | Parser | Tejaswini | `src/parser/normalizer.py` | `UT_F2_02` | `ST_F2_01` |
-| 8 | **REQ-F2-03** | Zeek Telemetry Ingestion | Parser | Tejaswini | `src/parser/zeek_ingest.py` | `UT_F2_03` | `ST_F2_02` |
-| 9 | **REQ-F2-04** | SQLite Database Storage Layer | Parser | Tejaswini | `src/parser/storage.py` | `UT_F2_04` | `ST_F2_03` |
-| 10 | **REQ-F2-05** | Pluggable Parser Interface | Parser | Tejaswini | `src/parser/base.py` | `UT_F2_05` | `ST_F2_03` |
-| 11 | **REQ-F3-01** | ARP Cache Poisoning Detection | Detection | Ritu | `src/detection/rules/arp_spoof.py` | `UT_F3_01, UT_F3_02` | `ST_F3_01` |
-| 12 | **REQ-F3-02** | ARP Reply Flood Detection | Detection | Ritu | `src/detection/rules/arp_spoof.py` | `UT_F3_03` | `ST_F3_01` |
-| 13 | **REQ-F3-03** | TCP/UDP Port Scan Detection | Detection | Ritu | `src/detection/rules/port_scan.py` | `UT_F3_07` | `ST_F3_02` |
-| 14 | **REQ-F3-04** | DNS Anomaly & Tunneling | Detection | Ritu | `src/detection/rules/dns_anomaly.py` | `UT_F3_08` | `ST_F3_03` |
-| 15 | **REQ-F3-05** | WiFi 802.11 Deauth Flood | Detection | Ritu | `src/detection/rules/wifi_deauth.py` | `UT_F3_09` | `ST_F3_04` |
-| 16 | **REQ-F3-06** | Rogue & Evil-Twin AP | Detection | Ritu | `src/detection/rules/rogue_ap.py` | `UT_F3_10` | `ST_F3_05` |
-| 17 | **REQ-F3-07** | BLE Flood & Spoofing | Detection | Ritu | `src/detection/rules/ble_flood.py` | `UT_F3_11` | `ST_F3_06` |
-| 18 | **REQ-F3-08** | Configurable Dynamic Thresholds | Detection | Ritu | `src/detection/config.py` | `UT_F3_12` | `ST_F3_07` |
-| 19 | **REQ-F3-09** | Standardized Alert Schema | Detection | Ritu | `src/detection/models.py` | `UT_F3_05` | `ST_F3_08` |
-| 20 | **REQ-F3-10** | Pluggable Rule Engine Core | Detection | Ritu | `src/detection/engine.py` | `UT_F3_05, UT_F3_06` | `ST_F3_09` |
-| 21 | **REQ-F4-01** | REST & WebSocket Backend API | Dashboard | Varshini | `src/dashboard/api.py` | `UT_F4_01` | `ST_F4_01` |
-| 22 | **REQ-F4-02** | Live Web Dashboard & Visuals | Dashboard | Varshini | `src/dashboard/frontend/` | `UT_F4_02` | `ST_F4_01` |
-| 23 | **REQ-F4-03** | Device Inventory & MAC Lookup | Dashboard | Varshini | `src/dashboard/inventory.py` | `UT_F4_03` | `ST_F4_02` |
-| 24 | **REQ-F4-04** | Search, Filtering & History | Dashboard | Varshini | `src/dashboard/history.py` | `UT_F4_04` | `ST_F4_03` |
-| 25 | **REQ-F4-05** | Session Export (PCAP/CSV/JSON) | Dashboard | Varshini | `src/dashboard/export.py` | `UT_F4_05` | `ST_F4_04` |
-| 26 | **SEC-01** | Bandit & SonarQube SAST | Security | Ritu | `.bandit`, `sonar-project.properties`| - | `ST_SEC_01` |
-| 27 | **SEC-02** | Resilient Packet Processing | Security | Ritu | `src/detection/engine.py` | `UT_F3_04` | `ST_SEC_02` |
-| 28 | **NFR-PERF-01** | Lossless Capture at Lab Rates | Quality | Vishal | `src/capture/` | `UT_F1_01` | `ST_PERF_01`|
-| 29 | **NFR-PORT-01** | Raspberry Pi Docker & systemd | DevOps | Vishal | `Dockerfile`, `docker-compose.yml` | - | `ST_DEPLOY_01`|
-| 30 | **NFR-USE-01** | Phone-Friendly Mobile Layout | Frontend | Varshini | `src/dashboard/frontend/` | `UT_F4_02` | `ST_USE_01` |
+| 1 | **REQ-F1-01** | Promiscuous Ethernet Capture | Capture | Vishal | `src/capture/ethernet.py` | `UT_F1_01` | `TC-F1-01` |
+| 2 | **REQ-F1-02** | WiFi Monitor Mode & Hopping | Capture | Vishal | `src/capture/wifi.py` | `UT_F1_02` | `TC-F1-02` |
+| 3 | **REQ-F1-03** | BLE Advertisement Capture | Capture | Vishal | `src/capture/ble.py` | `UT_F1_03` | `TC-F1-03` |
+| 4 | **REQ-F1-04** | Remote ESP32 Frame Ingest | Capture | Vishal | `src/capture/esp32.py` | `UT_F1_04` | `TC-F1-04` |
+| 5 | **REQ-F1-05** | PCAP Session Recording & Rotation | Capture | Vishal | `src/capture/session.py` | `UT_F1_05` | `TC-F1-05` |
+| 6 | **REQ-F2-01** | Multi-Layer Protocol Decoding | Parser | Tejaswini | `src/parser/protocol_parser.py` | `UT_F2_01` | `TC-F2-01` |
+| 7 | **REQ-F2-02** | Unified Schema Normalization | Parser | Tejaswini | `src/parser/normalizer.py` | `UT_F2_02` | `TC-F2-02` |
+| 8 | **REQ-F2-03** | Zeek Telemetry Ingestion | Parser | Tejaswini | `src/parser/zeek_ingest.py` | `UT_F2_03` | `TC-F2-03` |
+| 9 | **REQ-F2-04** | SQLite Database Storage Layer | Parser | Tejaswini | `src/storage/sqlite_store.py` | `UT_F2_04` | `TC-F2-04` |
+| 10 | **REQ-F2-05** | Pluggable Parser Interface | Parser | Tejaswini | `src/parser/base.py`, `src/parser/registry.py` | `UT_F2_05` | `TC-F2-05` |
+| 11 | **REQ-F3-01** | ARP Cache Poisoning Detection | Detection | Ritu | `src/detection/rules/arp_spoof.py` | `UT_F3_01, UT_F3_02` | `TC-F3-01` |
+| 12 | **REQ-F3-02** | ARP Reply Flood Detection | Detection | Ritu | `src/detection/rules/arp_spoof.py` | `UT_F3_03` | `TC-F3-02` |
+| 13 | **REQ-F3-03** | TCP/UDP Port Scan Detection | Detection | Ritu | `src/detection/rules/port_scan.py` | `UT_F3_07` | `TC-F3-03` |
+| 14 | **REQ-F3-04** | DNS Anomaly & Tunneling | Detection | Ritu | `src/detection/rules/base.py` | - | Deviated (`docs/Deviations.md`) |
+| 15 | **REQ-F3-05** | WiFi 802.11 Deauth Flood | Detection | Ritu | `src/detection/rules/wifi_deauth.py` | `UT_F3_09` | `TC-F3-04` |
+| 16 | **REQ-F3-06** | Rogue & Evil-Twin AP | Detection | Ritu | `src/detection/rules/rogue_ap.py` | `UT_F3_10` | `TC-F3-05` |
+| 17 | **REQ-F3-07** | BLE Flood & Spoofing | Detection | Ritu | `src/detection/rules/ble_flood.py` | `UT_F3_11` | `TC-F3-06` |
+| 18 | **REQ-F3-08** | Configurable Dynamic Thresholds | Detection | Ritu | `src/detection/config.py` | `UT_F3_12` | `TC-F3-07` |
+| 19 | **REQ-F3-09** | Standardized Alert Schema | Detection | Ritu | `src/detection/models.py` | `UT_F3_05` | `TC-F3-08` |
+| 20 | **REQ-F3-10** | Pluggable Rule Engine Core | Detection | Ritu | `src/detection/engine.py` | `UT_F3_05, UT_F3_06` | `TC-F3-09` |
+| 21 | **REQ-F4-01** | REST & WebSocket Backend API | Dashboard | Varshini | `src/dashboard/routes/` | `UT_F4_01` | `TC-F4-01` |
+| 22 | **REQ-F4-02** | Live Web Dashboard & Visuals | Dashboard | Varshini | `src/dashboard/static/index.html` | `UT_F4_02` | `TC-F4-01` |
+| 23 | **REQ-F4-03** | Device Inventory & MAC Lookup | Dashboard | Varshini | `src/dashboard/routes/devices.py` | `UT_F4_03` | `TC-F4-02` |
+| 24 | **REQ-F4-04** | Search, Filtering & History | Dashboard | Varshini | `src/dashboard/routes/packets.py` | `UT_F4_04` | `TC-F4-03` |
+| 25 | **REQ-F4-05** | Session Export (PCAP/CSV/JSON) | Dashboard | Varshini | `src/dashboard/routes/export.py` | `UT_F4_05` | `TC-F4-04` |
+| 26 | **SEC-01** | Bandit & SonarQube SAST | Security | Ritu | `.bandit`, `sonar-project.properties` | - | `TC-SEC-01` |
+| 27 | **SEC-02** | Resilient Packet Processing | Security | Ritu | `src/detection/engine.py` | `UT_F3_04` | `TC-SEC-02` |
+| 28 | **NFR-PERF-01** | Lossless Capture at Lab Rates | Quality | Vishal | `scripts/capture_benchmark.py` | `UT_F1_01` | `TC-PERF-01` |
+| 29 | **NFR-PORT-01** | Raspberry Pi Docker & systemd | DevOps | Vishal | `Dockerfile`, `docker-compose.yml` | - | `TC-DEPLOY-01` |
+| 30 | **NFR-USE-01** | Phone-Friendly Mobile Layout | Frontend | Varshini | `src/dashboard/static/index.html` | `UT_F4_02` | `TC-F4-01` |
