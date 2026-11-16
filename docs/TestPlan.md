@@ -68,28 +68,43 @@ The following software artifacts and release deliverables are subject to formal 
 
 ## 5. Test Approach and Strategy
 
-### 5.1 Levels of Testing
-* **Unit Testing (UT):** Validates individual functions, classes, dissectors, and detectors in isolation using synthetic packet records and mock network objects.
+### 5.1 Security Validation Strategy (Lead: Ritu Ravish)
+Security verification forms a first-class validation pillar embedded directly into the testing life cycle:
+1. **Automated Static Application Security Testing (Bandit & SonarQube):**
+   * Bandit static analyzer scans the Python Abstract Syntax Tree (AST) across `src/` on every pull request and local build using configuration rules in `.bandit`.
+   * Enforces zero tolerance for High- and Medium-severity findings (CWE-78 command injection, insecure shell executions, weak random number generation, hardcoded secrets, and unsafe deserialization).
+   * SonarQube quality gate (`sonar-project.properties`) validates maintainability, cognitive complexity, code duplication ($< 3\%$), and security hotspot resolution.
+2. **Third-Party Dependency Vulnerability Governance (`pip-audit`):**
+   * Continuous auditing of `requirements.txt` and `requirements-dashboard.txt` against the PyPI Advisory Database and National Vulnerability Database (NVD).
+   * Ensures zero known Critical or High Common Vulnerabilities and Exposures (CVEs) in deployed dependencies.
+3. **Defensive Packet Fuzzing & Malformed Input Hardening (SEC-02):**
+   * Dedicated fuzz testing suite (`tests/test_detection/test_fuzzing.py`) systematically injects anomalous, malformed, and corrupted network records into `DetectionEngine.validate_record()`.
+   * Test vectors include NaN timestamps, positive/negative infinity timestamps, negative port numbers ($-1$, $-80$), out-of-range port numbers ($65536$, $100000$), massive payload lengths exceeding Ethernet MTU ($100,000$ bytes), corrupted metadata structures, and non-record objects (`None`, strings, raw ints).
+   * Verification ensures that defective inputs are quarantined, logged, and tallied under the `malformed_dropped` counter without throwing uncaught exceptions or terminating packet inspection threads.
+4. **Forensic Evidence & Alert Integrity (SEC-04):**
+   * All emitted alerts are instantiated as immutable dataclass `Alert` objects with RFC 4122 UUIDv4 identifiers, epoch timestamps, and structured forensic dictionaries, preventing in-transit mutation or tampering.
+
+### 5.2 Levels of Testing
+* **Unit Testing (UT):** Validates individual functions, classes, dissectors, and detectors in isolation using synthetic packet records and mock network objects (executed via `pytest`).
 * **Integration Testing (IT):** Validates inter-module data contracts and asynchronous pipelines: `Capture -> Parser -> Storage -> Detection -> WebSocket -> Dashboard`.
 * **System Testing (ST):** End-to-end execution on target Raspberry Pi 4 hardware, replaying curated attack PCAPs and verifying live alerts on client browsers.
 * **Regression Testing:** Automated test execution on every commit and pull request via GitHub Actions CI.
 
-### 5.2 Entry and Exit Criteria
+### 5.3 Entry and Exit Criteria
 * **Entry Criteria:**
   1. Source code passes flake8 linting with zero fatal syntax errors.
   2. Module compiles and passes local unit tests before opening a Pull Request.
   3. Feature branches are rebased on latest `main`.
 * **Exit Criteria:**
   1. 100% of planned unit and integration test cases executed and passing.
-  2. Overall code line and branch coverage exceeds the 85% requirement threshold.
+  2. Overall code line and branch coverage exceeds the 85% requirement threshold (F3 Threat Detection achieves 94%).
   3. Bandit SAST scan reports zero High or Medium severity vulnerabilities.
   4. SonarQube quality gate status is **Passed**.
   5. Zero critical or high-severity unhandled defects remain open.
 
-### 5.3 Security Validation Strategy (Lead: Ritu Ravish)
-1. **Automated Static Analysis (Bandit):** Embedded in CI pipeline to scan AST for shell injections, weak cryptography, insecure deserialization, and hardcoded credentials.
-2. **Dependency Vulnerability Governance (`pip-audit`):** Automated checks against the National Vulnerability Database (NVD) for third-party libraries.
-3. **Fuzz Testing & Malformed Packet Hardening (SEC-02):** Automated injection of fuzzed packet fixtures into `DetectionEngine.validate_record()`—including NaN timestamps, infinite values, negative ports, giant payloads, and broken metadata—verifying zero process termination.
+### 5.4 Test Suspension and Resumption Criteria
+* **Suspension Criteria:** Testing is halted if core data models (`NormalizedRecord`, `Alert`) fail schema validation or if CI environment dependencies fail to resolve.
+* **Resumption Criteria:** Testing resumes once data contracts are restored, migrations pass, and clean virtual environments are confirmed.
 
 ---
 
@@ -132,7 +147,7 @@ The following software artifacts and release deliverables are subject to formal 
 
 ## 9. Test Case Catalogue
 
-The following 23 formal test cases verify functional and non-functional requirements across all project subsystems:
+The following 27 formal test cases verify functional and non-functional requirements across all project subsystems, with exhaustive coverage of threat detection rules, configuration management, and security hardening:
 
 | TC ID | SRS Traceability | Test Objective | Preconditions | Execution Steps | Expected Result | Pass Criteria |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -146,18 +161,21 @@ The following 23 formal test cases verify functional and non-functional requirem
 | **TC-F2-03** | REQ-F2-03 | Zeek telemetry ingestion | Running Zeek monitor generating `conn.log`. | 1. Stream Zeek log entries to `ZeekIngester`.<br>2. Query SQLite connection records. | Zeek connection records enrich connection metadata table. | Zeek UID and service names correlated with packet records. |
 | **TC-F2-04** | REQ-F2-04 | SQLite database persistence | Normalized packet records. | 1. Insert 1,000 normalized records into SQLite store.<br>2. Query by IP, MAC, and timestamp index. | Records inserted efficiently in batches; indexed queries return in $< 10\text{ms}$. | No SQL errors; WAL mode enabled; correct indices built. |
 | **TC-F2-05** | REQ-F2-05 | Pluggable parser interface | Custom protocol parser plugin inheriting from `BaseParser`. | 1. Implement and register custom dissector.<br>2. Stream target protocol packets. | Custom dissector invoked seamlessly without core parser modification. | OCP compliance verified; custom payload parsed. |
-| **TC-F3-01** | REQ-F3-01 | Dynamic ARP cache poisoning detection | Clean baseline ARP cache. | 1. Register IP `192.168.1.1` to MAC `00:11:22:33:44:01`.<br>2. Ingest conflicting ARP reply claiming same IP with MAC `aa:bb:cc:dd:ee:ff`. | Detection Engine flags conflict and generates `CRITICAL` severity `Alert`. | Alert emitted with offending and authentic MACs in evidence. |
-| **TC-F3-02** | REQ-F3-02 | ARP reply flood detection | `ArpSpoofDetector` with threshold 5 replies / 3.0s. | 1. Send burst of 6 gratuitous ARP replies from single MAC in 1.0s.<br>2. Check emitted alerts. | Engine generates `HIGH` severity alert indicating ARP reply flood. | Exact burst count and MAC recorded in alert evidence. |
-| **TC-F3-03** | REQ-F3-03 | TCP/UDP port scan detection | `PortScanDetector` with threshold 15 ports / 5.0s. | 1. Stream SYN packets from host to 16 distinct ports within 2.0s.<br>2. Verify port scan rule output. | `HIGH` severity alert generated specifying attacker IP and scanned ports. | Alert generated; horizontal/vertical scan distinguished. |
-| **TC-F3-04** | REQ-F3-05 | WiFi deauthentication flood detection | `WifiDeauthDetector` with threshold 10 frames / 2.0s. | 1. Ingest 12 deauthentication frames targeting BSSID within 1.0s.<br>2. Verify rule alert. | `HIGH` severity alert generated with target BSSID, client MAC, and frame count. | Alert contains mitigation advice (PMF 802.11w). |
-| **TC-F3-05** | REQ-F3-06 | Rogue & Evil-Twin AP detection | Authorized SSID baseline configured. | 1. Ingest beacon frame broadcasting known SSID from unauthorized BSSID.<br>2. Ingest beacon with downgraded security (OPEN). | Generates `CRITICAL` Evil-Twin alert and `HIGH` security downgrade alert. | Alerts deduplicated to prevent beacon flooding storms. |
-| **TC-F3-06** | REQ-F3-07 | BLE advertisement flood detection | `BleFloodDetector` active. | 1. Ingest 25 BLE advertisements from single MAC in 2.0s.<br>2. Ingest frames from 12 distinct random MACs in 2.0s. | Emits BLE Advertisement Flood alert and BLE MAC Churning alert. | Handled incomplete BLE frames without exceptions. |
-| **TC-F4-01** | REQ-F4-01, REQ-F4-02 | Live dashboard & WebSocket stream | Running dashboard backend and browser client. | 1. Open `http://<pi>:8000/`.<br>2. Verify WebSocket connection.<br>3. Ingest packets and alerts. | Packets appear in table within 2.0s; alert feed updates dynamically. | Sub-2.0s update latency achieved; connection resilient. |
+| **TC-F3-01** | REQ-F3-01 | Dynamic ARP cache poisoning detection | Clean baseline ARP cache. | 1. Register IP `192.168.1.1` to MAC `00:11:22:33:44:01`.<br>2. Ingest conflicting ARP reply claiming same IP with MAC `aa:bb:cc:dd:ee:ff`. | Detection Engine flags conflict and generates `CRITICAL` severity `Alert`. | Alert emitted with offending and authentic MACs in evidence (UT_F3_01, UT_F3_02). |
+| **TC-F3-02** | REQ-F3-02 | ARP reply flood detection | `ArpSpoofDetector` with threshold 5 replies / 3.0s. | 1. Send burst of 6 gratuitous ARP replies from single MAC in 1.0s.<br>2. Check emitted alerts.<br>3. Verify time-window eviction. | Engine generates `HIGH` severity alert indicating ARP reply flood; expired frames dropped safely. | Exact burst count and MAC recorded in alert evidence (UT_F3_03). |
+| **TC-F3-03** | REQ-F3-03 | TCP/UDP port scan detection | `PortScanDetector` with threshold 15 ports / 5.0s. | 1. Stream SYN packets from host to 16 distinct ports within 2.0s.<br>2. Stream UDP probes to 16 distinct ports.<br>3. Verify port scan rule output. | `HIGH` severity alert generated specifying attacker IP and scanned ports; distinguishes horizontal/vertical scans. | Scanned port set and threshold match alert payload (UT_F3_07). |
+| **TC-F3-04** | REQ-F3-05 | WiFi deauthentication flood detection | `WifiDeauthDetector` with threshold 10 frames / 2.0s. | 1. Ingest 12 deauthentication frames targeting BSSID within 1.0s.<br>2. Verify rule alert and mitigation advice. | `HIGH` severity alert generated with target BSSID, client MAC, and frame count. | Alert contains mitigation advice (PMF 802.11w) (UT_F3_09). |
+| **TC-F3-05** | REQ-F3-06 | Rogue & Evil-Twin AP detection | Authorized SSID baseline configured. | 1. Ingest beacon frame broadcasting known SSID from unauthorized BSSID.<br>2. Ingest beacon with downgraded security (OPEN). | Generates `CRITICAL` Evil-Twin alert and `HIGH` security downgrade alert. | Alerts deduplicated to prevent beacon flooding storms (UT_F3_10). |
+| **TC-F3-06** | REQ-F3-07 | BLE advertisement flood detection | `BleFloodDetector` active. | 1. Ingest 25 BLE advertisements from single MAC in 2.0s.<br>2. Ingest frames from 12 distinct random MACs in 2.0s. | Emits BLE Advertisement Flood alert and BLE MAC Churning alert. | Handled incomplete BLE frames without exceptions (UT_F3_11). |
+| **TC-F3-07** | REQ-F3-08 | Dynamic rule configuration & reload | `DetectionConfig` initialized from defaults. | 1. Load configuration from valid JSON dict/file.<br>2. Update rule threshold dynamically at runtime.<br>3. Test invalid configuration boundary rejection. | Config reloads in memory in $\le 100\text{ms}$; invalid keys rejected with ValueError. | Dynamic updates reflected immediately in detector instances (UT_F3_12). |
+| **TC-F3-08** | REQ-F3-09 | Standardized alert generation & schema | `Alert` and `NormalizedRecord` dataclasses. | 1. Generate alerts across all threat categories.<br>2. Validate UUIDv4 uniqueness, timestamp precision, severity enum, and dictionary serialization. | Alerts serialize to valid JSON dictionaries with all mandatory schema fields populated. | 100% compliance with Table B.2 alert schema (UT_F3_05). |
+| **TC-F3-09** | REQ-F3-10 | Pluggable detection rule engine core | `DetectionEngine` with multiple registered detectors. | 1. Register multiple `BaseDetector` instances.<br>2. Ingest heterogeneous packet stream.<br>3. Invoke engine `reset()` lifecycle method. | Engine dispatches records to appropriate detectors; callback receives generated alerts; state resets cleanly. | Per-record dispatch overhead $\le 0.5\text{ms}$; zero leakage across resets (UT_F3_05, UT_F3_06). |
+| **TC-F4-01** | REQ-F4-01, REQ-F4-02 | Live dashboard & WebSocket stream | Running dashboard backend and browser client. | 1. Open `http://<pi>:8000/`.<br>2. Verify WebSocket connection.<br>3. Ingest packets and alerts. | Packets appear in table within 1.0s; alert feed updates dynamically. | Sub-1.0s update latency achieved; connection resilient. |
 | **TC-F4-02** | REQ-F4-03 | Device inventory & OUI lookup | Packets containing diverse MAC addresses. | 1. Ingest packets from Apple, Intel, and Raspberry Pi MAC OUIs.<br>2. Open `/api/devices` and dashboard table. | Devices table lists vendor name, first/last seen timestamps, and active protocol. | Known OUIs resolved correctly; unknown defaults safely. |
 | **TC-F4-03** | REQ-F4-04 | Multi-interface search and filtering | Database populated with historical records. | 1. Filter by protocol=ARP and interface=eth0.<br>2. Search for specific IP substring. | Query results match applied filter criteria accurately. | Correct SQL WHERE clauses executed; fast pagination. |
 | **TC-F4-04** | REQ-F4-05 | Session forensic export | Filtered traffic query. | 1. Request export in PCAP, CSV, and JSON formats.<br>2. Inspect exported file contents. | PCAP readable by Wireshark; CSV/JSON contain valid structured records. | Valid MIME headers; no truncated records. |
-| **TC-SEC-01** | SEC-01 | Bandit SAST & SonarQube audit | Complete codebase. | 1. Execute `python -m bandit -r src -c .bandit`.<br>2. Execute SonarQube scan. | Zero High or Medium severity vulnerabilities reported. | CI build step passes cleanly. |
-| **TC-SEC-02** | SEC-02 | Packet input fuzzing resilience | `DetectionEngine` input pipeline. | 1. Ingest NaN timestamps, negative ports, giant payloads, non-record objects.<br>2. Observe engine behavior. | Engine drops malformed records safely; increments `malformed_dropped`; zero crashes. | Robust error containment verified (UT_F3_04). |
+| **TC-SEC-01** | SEC-01 | Bandit SAST & SonarQube audit | Complete codebase across `src/`. | 1. Execute `bandit -r src -c .bandit`.<br>2. Verify SonarQube scanner properties. | Zero High or Medium severity vulnerabilities reported. | CI build step passes cleanly with 0 security defects. |
+| **TC-SEC-02** | SEC-02 | Packet input fuzzing resilience | `DetectionEngine` input pipeline. | 1. Ingest NaN timestamps, negative ports, giant payloads, non-record objects.<br>2. Observe engine behavior. | Engine drops malformed records safely; increments `malformed_dropped`; zero crashes. | Robust error containment verified (UT_F3_04, ST_SEC_02). |
 | **TC-PERF-01** | NFR-PERF-01 | Lossless capture throughput benchmark | Traffic generator streaming frames. | 1. Run `scripts/capture_benchmark.py` at 1,000 to 5,000 pkts/sec for 60s.<br>2. Verify packet loss counters. | Packet drop percentage remains $< 0.1\%$ under target workload. | Sustained throughput achieved without memory leaks. |
 
 ---
@@ -177,19 +195,19 @@ This matrix maps each requirement from the Software Requirements Specification (
 | 7 | **REQ-F2-02** | Unified Schema Normalization | Parser | Tejaswini | `src/parser/normalizer.py` | `UT_F2_02` | `TC-F2-02` | **Verified** |
 | 8 | **REQ-F2-03** | Zeek Telemetry Ingestion | Parser | Tejaswini | `src/parser/zeek_ingest.py` | `UT_F2_03` | `TC-F2-03` | **Verified** |
 | 9 | **REQ-F2-04** | SQLite Database Storage Layer | Parser | Tejaswini | `src/storage/sqlite_store.py` | `UT_F2_04` | `TC-F2-04` | **Verified** |
-| 10 | **REQ-F2-05** | Pluggable Parser Interface | Parser | Tejaswini | `src/parser/base.py` | `UT_F2_05` | `TC-F2-05` | **Verified** |
+| 10 | **REQ-F2-05** | Pluggable Parser Interface | Parser | Tejaswini | `src/parser/base.py`, `src/parser/registry.py` | `UT_F2_05` | `TC-F2-05` | **Verified** |
 | 11 | **REQ-F3-01** | ARP Cache Poisoning Detection | Detection | Ritu | `src/detection/rules/arp_spoof.py` | `UT_F3_01, UT_F3_02`| `TC-F3-01` | **Verified** |
 | 12 | **REQ-F3-02** | ARP Reply Flood Detection | Detection | Ritu | `src/detection/rules/arp_spoof.py` | `UT_F3_03` | `TC-F3-02` | **Verified** |
 | 13 | **REQ-F3-03** | TCP/UDP Port Scan Detection | Detection | Ritu | `src/detection/rules/port_scan.py` | `UT_F3_07` | `TC-F3-03` | **Verified** |
-| 14 | **REQ-F3-04** | DNS Anomaly & Tunneling | Detection | Ritu | `src/detection/rules/dns_anomaly.py`| `UT_F3_08` | `TC-F3-01` | **Verified** |
+| 14 | **REQ-F3-04** | DNS Anomaly & Tunneling | Detection | Ritu | `src/detection/rules/base.py` | - | Deviated (`docs/Deviations.md`) | **Logged** |
 | 15 | **REQ-F3-05** | WiFi 802.11 Deauth Flood Detection | Detection | Ritu | `src/detection/rules/wifi_deauth.py`| `UT_F3_09` | `TC-F3-04` | **Verified** |
 | 16 | **REQ-F3-06** | Rogue & Evil-Twin AP Detection | Detection | Ritu | `src/detection/rules/rogue_ap.py` | `UT_F3_10` | `TC-F3-05` | **Verified** |
 | 17 | **REQ-F3-07** | BLE Advertisement Flood & Spoofing | Detection | Ritu | `src/detection/rules/ble_flood.py` | `UT_F3_11` | `TC-F3-06` | **Verified** |
-| 18 | **REQ-F3-08** | Configurable Dynamic Thresholds | Detection | Ritu | `src/detection/config.py` | `UT_F3_12` | `TC-F3-01` | **Verified** |
-| 19 | **REQ-F3-09** | Standardized Alert Schema | Detection | Ritu | `src/detection/models.py` | `UT_F3_05` | `TC-F3-01` | **Verified** |
-| 20 | **REQ-F3-10** | Pluggable Rule Engine Core | Detection | Ritu | `src/detection/engine.py` | `UT_F3_05, UT_F3_06`| `TC-F3-01` | **Verified** |
+| 18 | **REQ-F3-08** | Configurable Dynamic Thresholds | Detection | Ritu | `src/detection/config.py` | `UT_F3_12` | `TC-F3-07` | **Verified** |
+| 19 | **REQ-F3-09** | Standardized Alert Schema | Detection | Ritu | `src/detection/models.py` | `UT_F3_05` | `TC-F3-08` | **Verified** |
+| 20 | **REQ-F3-10** | Pluggable Rule Engine Core | Detection | Ritu | `src/detection/engine.py` | `UT_F3_05, UT_F3_06`| `TC-F3-09` | **Verified** |
 | 21 | **REQ-F4-01** | REST & WebSocket Backend API | Dashboard | Varshini | `src/dashboard/routes/` | `UT_F4_01` | `TC-F4-01` | **Verified** |
-| 22 | **REQ-F4-02** | Live Web Dashboard & Visuals | Dashboard | Varshini | `src/dashboard/static/` | `UT_F4_02` | `TC-F4-01` | **Verified** |
+| 22 | **REQ-F4-02** | Live Web Dashboard & Visuals | Dashboard | Varshini | `src/dashboard/static/index.html` | `UT_F4_02` | `TC-F4-01` | **Verified** |
 | 23 | **REQ-F4-03** | Device Inventory & MAC Lookup | Dashboard | Varshini | `src/dashboard/routes/devices.py`| `UT_F4_03` | `TC-F4-02` | **Verified** |
 | 24 | **REQ-F4-04** | Search, Filtering & History | Dashboard | Varshini | `src/dashboard/routes/packets.py`| `UT_F4_04` | `TC-F4-03` | **Verified** |
 | 25 | **REQ-F4-05** | Session Export (PCAP/CSV/JSON) | Dashboard | Varshini | `src/dashboard/routes/export.py` | `UT_F4_05` | `TC-F4-04` | **Verified** |
@@ -197,7 +215,7 @@ This matrix maps each requirement from the Software Requirements Specification (
 | 27 | **SEC-02** | Resilient Packet Processing | Security | Ritu | `src/detection/engine.py` | `UT_F3_04` | `TC-SEC-02` | **Verified** |
 | 28 | **NFR-PERF-01** | Lossless Capture at Lab Rates | Quality | Vishal | `scripts/capture_benchmark.py` | `UT_F1_01` | `TC-PERF-01` | **Verified** |
 | 29 | **NFR-PORT-01** | Raspberry Pi Docker & systemd | DevOps | Vishal | `Dockerfile`, `docker-compose.yml` | - | `TC-DEPLOY-01`| **Verified** |
-| 30 | **NFR-USE-01** | Phone-Friendly Mobile Layout | Frontend | Varshini | `src/dashboard/static/` | `UT_F4_02` | `TC-F4-01` | **Verified** |
+| 30 | **NFR-USE-01** | Phone-Friendly Mobile Layout | Frontend | Varshini | `src/dashboard/static/index.html` | `UT_F4_02` | `TC-F4-01` | **Verified** |
 
 ---
 

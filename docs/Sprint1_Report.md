@@ -40,10 +40,10 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
 | Member | Points planned | Points completed |
 | :--- | :--- | :--- |
 | Vishal Prasath | 12 | 12 |
-| Tejaswini R Pujar | | |
+| Tejaswini R Pujar | 10 | 10 |
 | Ritu Ravish | 15 | 15 |
 | Varshini A | 15 | 15 |
-| **Team** | | |
+| **Team Total** | **52** | **52** |
 
 ## What went well / what to improve
 
