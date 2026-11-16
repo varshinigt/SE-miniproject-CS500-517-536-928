@@ -6,11 +6,11 @@
 
 | Issue | SRS ID | Story | Points | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| #1 | FR-F4-01 | REST API skeleton with health endpoint | 2 | PR open |
-| #2 | FR-F4-01 | Packets endpoint reading from SQLite | 3 | PR open |
-| #3 | FR-F4-01 | Alerts endpoint | 2 | PR open |
-| #4 | FR-F4-02 | Dashboard page with live packet table | 5 | PR open |
-| #5 | FR-F4-02 | Alert feed panel | 3 | PR open |
+| #1 | FR-F4-01 | REST API skeleton with health endpoint | 2 | Merged (#46) |
+| #2 | FR-F4-01 | Packets endpoint reading from SQLite | 3 | Merged (#46) |
+| #3 | FR-F4-01 | Alerts endpoint | 2 | Merged (#46) |
+| #4 | FR-F4-02 | Dashboard page with live packet table | 5 | Merged (#48) |
+| #5 | FR-F4-02 | Alert feed panel | 3 | Merged (#48) |
 | | | **Total planned** | **15** | |
 
 ## F3 Threat Detection: planned work
@@ -42,7 +42,7 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
 | Vishal Prasath | 12 | 12 |
 | Tejaswini R Pujar | | |
 | Ritu Ravish | 15 | 15 |
-| Varshini A | 15 | |
+| Varshini A | 15 | 15 |
 | **Team** | | |
 
 ## What went well / what to improve
@@ -56,6 +56,15 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
 - **What to improve:**
   - Execute the sustained 1,000 pps lossless capture benchmark on physical Raspberry Pi 4 hardware once deployed in lab.
   - Proceed with Sprint 2 wireless capture features (WiFi monitor mode hopping, BLE advertisements, and ESP32 UDP ingestion).
+
+### F4 Dashboard (Varshini A)
+- **What went well:**
+  - Delivered the REST API (health, packets, alerts), the live packet table and the alert feed, with 22 unit tests and 98% line and branch coverage.
+  - CI caught a missing dependency and a Bandit warning on our first PRs; both were fixed the same day (#47 and #49).
+  - Rotating reviewers kept every PR reviewed before merge.
+- **What to improve:**
+  - Replace polling with WebSocket push and measure dashboard latency against NFR-PERF-03 (both done in Sprint 2).
+  - Align the dashboard queries with the final parser schema once F2 is integrated.
 
 ### F3 Threat Detection (Ritu Ravish)
 - **What went well:**

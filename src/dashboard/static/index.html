@@ -13,6 +13,19 @@
     #status { font-size: 13px; color: #8fbf7f; }
     main { display: grid; gap: 16px; padding: 16px; grid-template-columns: 2fr 1fr; }
     @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+    .side { display: grid; gap: 16px; align-content: start; }
+    canvas { max-width: 100%; }
+    #filter-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    #filter-bar input, #filter-bar select, #filter-bar button {
+      background: #222c36; color: #e6e6e6; border: 1px solid #2a343f; border-radius: 4px;
+      padding: 6px 8px; font-size: 13px; }
+    #filter-bar input { flex: 1 1 140px; min-width: 0; }
+    #filter-bar button { cursor: pointer; }
+    .export { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px;
+              font-size: 12px; color: #8b98a5; }
+    .export a { color: #58a6ff; text-decoration: none; border: 1px solid #2a343f; border-radius: 4px;
+                padding: 4px 8px; }
+    #chart-total { font-size: 12px; color: #8b98a5; margin: 0 0 8px; }
     section { background: #1a2129; border-radius: 8px; padding: 12px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #2a343f; white-space: nowrap; }
@@ -22,6 +35,23 @@
     li.sev-high { border-left-color: #e5534b; }
     li.sev-medium { border-left-color: #d29922; }
     li.sev-low { border-left-color: #3fb950; }
+    /* Phones: single column, alerts first, fewer table columns, thumb-sized controls. */
+    @media (max-width: 600px) {
+      header { flex-wrap: wrap; gap: 4px; padding: 10px 12px; }
+      main { padding: 10px; gap: 10px; }
+      .side { display: contents; }
+      #alert-feed { order: -1; }
+      #chart-panel { order: 1; }
+      #device-panel { order: 2; }
+      #packet-table th:nth-child(5), #packet-table td:nth-child(5),
+      #packet-table th:nth-child(6), #packet-table td:nth-child(6),
+      #device-table th:nth-child(3), #device-table td:nth-child(3),
+      #device-table th:nth-child(4), #device-table td:nth-child(4) { display: none; }
+      table { font-size: 12px; }
+      th, td { padding: 6px 4px; }
+      #filter-bar input, #filter-bar select, #filter-bar button { min-height: 44px; font-size: 16px; }
+      .export a { padding: 10px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -32,20 +62,57 @@
   <main>
     <section>
       <h2>Live packets</h2>
-      <table>
+      <form id="filter-bar" onsubmit="return false">
+        <select id="filter-protocol" aria-label="Protocol">
+          <option value="">All protocols</option>
+          <option>TCP</option><option>UDP</option><option>DNS</option><option>ARP</option><option>ICMP</option>
+        </select>
+        <input id="filter-host" type="text" placeholder="Host (exact IP)" aria-label="Host">
+        <input id="filter-search" type="search" placeholder="Search packets" aria-label="Search">
+        <button id="filter-clear" type="button">Clear</button>
+      </form>
+      <table id="packet-table">
         <thead>
           <tr><th>Time</th><th>Source</th><th>Destination</th><th>Protocol</th><th>Length</th><th>Info</th></tr>
         </thead>
         <tbody id="packet-rows"></tbody>
       </table>
+      <div class="export" id="export-packets">
+        Export these packets:
+        <a id="export-packets-csv" href="/export/packets?format=csv" download>CSV</a>
+        <a id="export-packets-json" href="/export/packets?format=json" download>JSON</a>
+      </div>
     </section>
-    <section id="alert-feed">
-      <h2>Alerts</h2>
-      <ul id="alert-list"></ul>
-    </section>
+    <div class="side">
+      <section id="chart-panel">
+        <h2>Traffic by protocol</h2>
+        <p id="chart-total">waiting for data...</p>
+        <canvas id="protocol-chart" height="160"></canvas>
+      </section>
+      <section id="device-panel">
+        <h2>Device inventory</h2>
+        <table id="device-table">
+          <thead>
+            <tr><th>Device</th><th>Packets</th><th>Bytes</th><th>Protocols</th><th>Last seen</th></tr>
+          </thead>
+          <tbody id="device-rows"></tbody>
+        </table>
+      </section>
+      <section id="alert-feed">
+        <h2>Alerts</h2>
+        <ul id="alert-list"></ul>
+        <div class="export" id="export-alerts">
+          Export alerts:
+          <a id="export-alerts-csv" href="/export/alerts?format=csv" download>CSV</a>
+          <a id="export-alerts-json" href="/export/alerts?format=json" download>JSON</a>
+        </div>
+      </section>
+    </div>
   </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
     const POLL_MS = 1000;
+    const RECONNECT_MS = 3000;
 
     function fmtTime(ts) {
       return new Date(ts * 1000).toLocaleTimeString();
@@ -58,9 +125,36 @@
       return td;
     }
 
-    async function refreshPackets() {
-      const res = await fetch("/packets?limit=50");
-      const packets = await res.json();
+    // Current filter bar values as query parameters (protocol, host, q).
+    function filterParams() {
+      const params = new URLSearchParams();
+      const protocol = document.getElementById("filter-protocol").value;
+      const host = document.getElementById("filter-host").value.trim();
+      const q = document.getElementById("filter-search").value.trim();
+      if (protocol) params.set("protocol", protocol);
+      if (host) params.set("host", host);
+      if (q) params.set("q", q);
+      return params;
+    }
+
+    function packetUrl() {
+      const params = filterParams();
+      params.set("limit", "50");
+      return "/packets?" + params.toString();
+    }
+
+    // The packet export links always download exactly what the filters select.
+    function updateExportLinks() {
+      ["csv", "json"].forEach(fmt => {
+        const params = filterParams();
+        params.set("format", fmt);
+        document.getElementById("export-packets-" + fmt).href = "/export/packets?" + params.toString();
+      });
+    }
+
+    // ---- rendering: one function per panel, used by both WebSocket and polling ----
+
+    function renderPackets(packets) {
       const rows = packets.map(p => {
         const tr = document.createElement("tr");
         [fmtTime(p.ts), p.src, p.dst, p.protocol, p.length, p.info].forEach(v => tr.appendChild(cell(v)));
@@ -69,9 +163,7 @@
       document.getElementById("packet-rows").replaceChildren(...rows);
     }
 
-    async function refreshAlerts() {
-      const res = await fetch("/alerts?limit=20");
-      const alerts = await res.json();
+    function renderAlerts(alerts) {
       const items = alerts.map(a => {
         const li = document.createElement("li");
         li.className = "sev-" + String(a.severity).replace(/[^a-z]/gi, "");
@@ -87,18 +179,135 @@
       document.getElementById("alert-list").replaceChildren(...items);
     }
 
-    async function refresh() {
-      try {
-        await refreshPackets();
-        await refreshAlerts();
-        document.getElementById("status").textContent = "live - " + new Date().toLocaleTimeString();
-      } catch (err) {
-        document.getElementById("status").textContent = "offline";
+    function renderDevices(devices) {
+      const rows = devices.map(d => {
+        const tr = document.createElement("tr");
+        [d.ip, d.packets, d.bytes, d.protocols.join(", "), fmtTime(d.last_seen)]
+          .forEach(v => tr.appendChild(cell(v)));
+        return tr;
+      });
+      if (rows.length === 0) {
+        const tr = document.createElement("tr");
+        const td = cell("No devices seen yet");
+        td.colSpan = 5;
+        tr.appendChild(td);
+        rows.push(tr);
+      }
+      document.getElementById("device-rows").replaceChildren(...rows);
+    }
+
+    let chart = null;
+
+    function renderStats(stats) {
+      const labels = Object.keys(stats.by_protocol);
+      const values = labels.map(k => stats.by_protocol[k]);
+      document.getElementById("chart-total").textContent =
+        stats.total + " packets in the last " + stats.window + " seconds";
+      if (typeof Chart === "undefined") return;  // chart library could not load (offline)
+      if (!chart) {
+        chart = new Chart(document.getElementById("protocol-chart"), {
+          type: "bar",
+          data: { labels, datasets: [{ label: "Packets", data: values, backgroundColor: "#58a6ff" }] },
+          options: {
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+          },
+        });
+      } else {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
       }
     }
 
-    refresh();
-    setInterval(refresh, POLL_MS);
+    function setStatus(text) {
+      document.getElementById("status").textContent = text;
+    }
+
+    // ---- polling fallback: used while the WebSocket is not connected ----
+
+    async function getJson(url) {
+      const res = await fetch(url);
+      return res.json();
+    }
+
+    async function refreshPackets() {
+      renderPackets(await getJson(packetUrl()));
+    }
+
+    async function poll() {
+      try {
+        renderPackets(await getJson(packetUrl()));
+        renderAlerts(await getJson("/alerts?limit=20"));
+        renderStats(await getJson("/stats?window=60"));
+        renderDevices(await getJson("/devices?window=300"));
+        setStatus("live (polling) - " + new Date().toLocaleTimeString());
+      } catch (err) {
+        setStatus("offline");
+      }
+    }
+
+    let pollTimer = null;
+    function startPolling() {
+      if (pollTimer) return;
+      poll();
+      pollTimer = setInterval(poll, POLL_MS);
+    }
+    function stopPolling() {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+
+    // ---- WebSocket: the server pushes every update, filters go in the URL ----
+
+    let socket = null;
+    let reconnectTimer = null;
+
+    function connectSocket() {
+      clearTimeout(reconnectTimer);
+      if (socket) {
+        socket.onclose = null;
+        socket.close();
+      }
+      const scheme = location.protocol === "https:" ? "wss://" : "ws://";
+      socket = new WebSocket(scheme + location.host + "/ws/live?" + filterParams().toString());
+      socket.onmessage = event => {
+        const data = JSON.parse(event.data);
+        stopPolling();
+        renderPackets(data.packets);
+        renderAlerts(data.alerts);
+        renderStats(data.stats);
+        renderDevices(data.devices);
+        setStatus("live (push) - " + new Date().toLocaleTimeString());
+      };
+      socket.onclose = () => {
+        setStatus("reconnecting...");
+        startPolling();
+        reconnectTimer = setTimeout(connectSocket, RECONNECT_MS);
+      };
+    }
+
+    let debounce = null;
+    function onFilterChange() {
+      updateExportLinks();
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        if (pollTimer) refreshPackets().catch(() => {});
+        else connectSocket();  // new filters are applied by opening a new stream
+      }, 250);
+    }
+    ["filter-protocol", "filter-host", "filter-search"].forEach(id => {
+      document.getElementById(id).addEventListener("input", onFilterChange);
+    });
+    document.getElementById("filter-clear").addEventListener("click", () => {
+      document.getElementById("filter-protocol").value = "";
+      document.getElementById("filter-host").value = "";
+      document.getElementById("filter-search").value = "";
+      onFilterChange();
+    });
+
+    connectSocket();
   </script>
 </body>
 </html>
