@@ -1,0 +1,97 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.3.5, pluggy-1.5.0 -- /Users/vishal/Desktop/SE-miniproject-CS500-517-536-928/.venv/bin/python
+rootdir: /Users/vishal/Desktop/SE-miniproject-CS500-517-536-928
+configfile: pytest.ini
+plugins: anyio-4.12.1, cov-7.1.0
+collecting ... collected 71 items
+
+tests/unit/test_ethernet_capture.py::test_capture_enables_promiscuous_mode_on_interface PASSED [  1%]
+tests/unit/test_ethernet_capture.py::test_capture_passes_each_frame_with_interface_name PASSED [  2%]
+tests/unit/test_ethernet_capture.py::test_capture_works_without_handler PASSED [  4%]
+tests/unit/test_ethernet_capture.py::test_stop_ends_capture_loop PASSED  [  5%]
+tests/unit/test_ethernet_capture.py::test_bpf_filter_is_forwarded PASSED [  7%]
+tests/unit/test_ethernet_capture.py::test_missing_interface_raises_capture_error PASSED [  8%]
+tests/unit/test_ethernet_capture.py::test_permission_denied_raises_capture_error PASSED [  9%]
+tests/unit/test_ethernet_capture.py::test_interface_exists_detects_loopback PASSED [ 11%]
+tests/unit/test_ethernet_capture.py::test_async_capture_uses_queue_and_drains_packets PASSED [ 12%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_defaults PASSED       [ 14%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_invalid_parameters PASSED [ 15%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_hops_channels PASSED  [ 16%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_forwards_packets_to_handler PASSED [ 18%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_without_handler PASSED [ 19%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_stop_ends_capture PASSED [ 21%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_missing_interface_raises_capture_error PASSED [ 22%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_permission_denied_raises_capture_error PASSED [ 23%]
+tests/unit/test_wifi_capture.py::test_wifi_capture_async_processing_queue PASSED [ 25%]
+tests/unit/test_wifi_capture.py::test_set_interface_channel_helper PASSED [ 26%]
+tests/unit/test_wifi_capture.py::test_set_interface_channel_fallback_to_iwconfig PASSED [ 28%]
+tests/unit/test_wifi_capture.py::test_set_interface_channel_failure PASSED [ 29%]
+tests/unit/test_ble_capture.py::test_ble_capture_defaults PASSED         [ 30%]
+tests/unit/test_ble_capture.py::test_ble_capture_invalid_parameters PASSED [ 32%]
+tests/unit/test_ble_capture.py::test_ble_capture_forwards_advertisements_to_handler PASSED [ 33%]
+tests/unit/test_ble_capture.py::test_ble_capture_without_handler PASSED  [ 35%]
+tests/unit/test_ble_capture.py::test_ble_capture_stop_ends_capture PASSED [ 36%]
+tests/unit/test_ble_capture.py::test_ble_capture_missing_device_raises_capture_error PASSED [ 38%]
+tests/unit/test_ble_capture.py::test_ble_capture_permission_denied_raises_capture_error PASSED [ 39%]
+tests/unit/test_ble_capture.py::test_ble_capture_async_processing_queue PASSED [ 40%]
+tests/unit/test_ble_capture.py::test_hci_device_exists_helper PASSED     [ 42%]
+tests/unit/test_esp32_ingest.py::test_parse_esp32_datagram_valid PASSED  [ 43%]
+tests/unit/test_esp32_ingest.py::test_parse_esp32_datagram_too_short PASSED [ 45%]
+tests/unit/test_esp32_ingest.py::test_parse_esp32_datagram_invalid_magic PASSED [ 46%]
+tests/unit/test_esp32_ingest.py::test_parse_esp32_datagram_truncated_payload PASSED [ 47%]
+tests/unit/test_esp32_ingest.py::test_esp32_capture_validation PASSED    [ 49%]
+tests/unit/test_esp32_ingest.py::test_esp32_capture_ingests_datagrams_over_udp PASSED [ 50%]
+tests/unit/test_esp32_ingest.py::test_esp32_capture_defensive_against_malformed_packets PASSED [ 52%]
+tests/unit/test_esp32_ingest.py::test_esp32_capture_bind_error PASSED    [ 53%]
+tests/unit/test_esp32_ingest.py::test_esp32_capture_async_processing_queue PASSED [ 54%]
+tests/unit/test_pcap_session.py::test_session_writes_timestamped_pcap_readable_by_scapy PASSED [ 56%]
+tests/unit/test_pcap_session.py::test_rotates_when_size_limit_reached PASSED [ 57%]
+tests/unit/test_pcap_session.py::test_rotates_when_duration_limit_reached PASSED [ 59%]
+tests/unit/test_pcap_session.py::test_filenames_are_unique_within_the_same_second PASSED [ 60%]
+tests/unit/test_pcap_session.py::test_oversized_packet_does_not_rotate_forever PASSED [ 61%]
+tests/unit/test_pcap_session.py::test_invalid_limits_are_rejected PASSED [ 63%]
+tests/unit/test_pcap_session.py::test_output_directory_is_created PASSED [ 64%]
+tests/unit/test_pcap_session.py::test_replay_delivers_same_packets_in_same_order PASSED [ 66%]
+tests/unit/test_pcap_session.py::test_replay_uses_given_interface_name PASSED [ 67%]
+tests/unit/test_pcap_session.py::test_replay_missing_file_raises PASSED  [ 69%]
+tests/unit/test_capture_stats.py::test_read_rx_dropped_sums_available_counters PASSED [ 70%]
+tests/unit/test_capture_stats.py::test_read_rx_dropped_returns_none_when_unavailable PASSED [ 71%]
+tests/unit/test_capture_stats.py::test_read_rx_dropped_ignores_bad_counter_value PASSED [ 73%]
+tests/unit/test_capture_stats.py::test_tracker_reports_drops_during_session PASSED [ 74%]
+tests/unit/test_capture_stats.py::test_tracker_reports_zero_drops PASSED [ 76%]
+tests/unit/test_capture_stats.py::test_tracker_drop_count_unknown_without_counters PASSED [ 77%]
+tests/unit/test_capture_stats.py::test_tracker_never_reports_negative_drops PASSED [ 78%]
+tests/unit/test_capture_stats.py::test_rate_is_zero_for_zero_duration PASSED [ 80%]
+tests/unit/test_capture_stats.py::test_summary_reports_captured_and_dropped[0-dropped=0] PASSED [ 81%]
+tests/unit/test_capture_stats.py::test_summary_reports_captured_and_dropped[None-dropped=unknown] PASSED [ 83%]
+tests/unit/test_capture_stats.py::test_ethernet_capture_exposes_stats_after_session PASSED [ 84%]
+tests/unit/test_packet_queue.py::test_queue_processes_submitted_packets PASSED [ 85%]
+tests/unit/test_packet_queue.py::test_queue_drops_packets_when_full PASSED [ 87%]
+tests/unit/test_packet_queue.py::test_queue_continues_after_handler_error PASSED [ 88%]
+tests/unit/test_packet_queue.py::test_queue_rejects_nonpositive_capacity PASSED [ 90%]
+tests/unit/test_packet_queue.py::test_queue_rejects_submissions_after_close PASSED [ 91%]
+tests/unit/test_packet_queue.py::test_start_after_close_raises_error PASSED [ 92%]
+tests/unit/test_packet_queue.py::test_close_before_start_does_not_crash PASSED [ 94%]
+tests/unit/test_packet_queue.py::test_start_called_twice_does_not_restart_worker PASSED [ 95%]
+tests/unit/test_packet_queue.py::test_close_called_twice_does_not_crash PASSED [ 97%]
+tests/unit/test_packet_queue.py::test_close_without_wait_stops_worker PASSED [ 98%]
+tests/performance/test_packet_queue_performance.py::test_packet_queue_throughput PASSED [100%]
+
+- generated xml file: /Users/vishal/Desktop/SE-miniproject-CS500-517-536-928/docs/reports/F1_unit_tests.xml -
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.9.6-final-0 ________________
+
+Name                          Stmts   Miss Branch BrPart  Cover   Missing
+-------------------------------------------------------------------------
+src/capture/__init__.py           8      0      0      0   100%
+src/capture/ble.py               72      1     14      0    99%   89
+src/capture/esp32.py            127     10     28      5    90%   119, 128, 138->exit, 141-142, 185-186, 197->221, 201, 206, 208-209
+src/capture/ethernet.py          71      1     14      1    98%   56
+src/capture/packet_queue.py      66      0     20      0   100%
+src/capture/session.py           74      1     12      1    98%   74
+src/capture/stats.py             45      0      4      0   100%
+src/capture/wifi.py             115      3     28      2    97%   47->36, 119, 136->exit, 140-141
+-------------------------------------------------------------------------
+TOTAL                           578     16    120      9    96%
+Coverage XML written to file docs/reports/F1_coverage.xml
+============================== 71 passed in 1.06s ==============================
