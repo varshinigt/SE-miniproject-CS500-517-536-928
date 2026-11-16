@@ -1,0 +1,23 @@
+[Unit]
+Description=Pocket Packet Sniffer Capture Service (UE24CS341A, NFR-PORT-01)
+After=network-online.target bluetooth.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/pocket-packet-sniffer
+# Default sources. Override in /etc/default/pocket-packet-sniffer, e.g.
+# PPS_CAPTURE_ARGS=--ethernet eth0 --wifi wlan0mon --ble hci0 --esp32 --output-dir /opt/pocket-packet-sniffer/data/pcaps
+Environment="PPS_CAPTURE_ARGS=--ethernet eth0 --esp32 --output-dir /opt/pocket-packet-sniffer/data/pcaps"
+EnvironmentFile=-/etc/default/pocket-packet-sniffer
+ExecStart=/opt/pocket-packet-sniffer/.venv/bin/python -m src.capture $PPS_CAPTURE_ARGS
+Restart=always
+RestartSec=5
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
