@@ -33,10 +33,22 @@
 
 ---
 
-## F1 & F2 Highlights (Vishal Prasath & Tejaswini R Pujar)
+## F1 Packet Capture & DevOps: delivered work (Vishal Prasath)
 
-- **F1 Packet Capture (Vishal Prasath):** Implemented PCAP session recording, size/time-bounded rotation, capture replay harness, and sysfs NIC loss counter benchmarks.
-- **F2 Protocol Parsing & Registry (Tejaswini R Pujar):** Completed L2–L7 protocol parsing, pluggable protocol registry, and WiFi/BLE parser decoders mapping into unified schema (`NormalizedRecord`).
+| Issue | SRS ID | Story | Points | Status | Delivered in |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| #31 | REQ-F1-02 | WiFi 802.11 monitor mode capture and channel hopping (ch 1–13) | 5 | Done | `src/capture/wifi.py`, `tests/unit/test_wifi_capture.py` |
+| #32 | REQ-F1-03 | Bluetooth Low Energy (BLE) advertisement capture via BlueZ HCI | 4 | Done | `src/capture/ble.py`, `tests/unit/test_ble_capture.py` |
+| #33 | REQ-F1-04 | Remote ESP32 sniffer probe frame ingestion over UDP port 5555 | 3 | Done | `src/capture/esp32.py`, `tests/unit/test_esp32_ingest.py` |
+| - | NFR-PORT-01 | Raspberry Pi Docker containerization and systemd service | 2 | Done | `Dockerfile`, `docker-compose.yml`, `scripts/pocket-packet-sniffer.service` |
+| | | **Total planned & delivered** | **14** | | |
+
+---
+
+## F2 Highlights (Tejaswini R Pujar)
+
+- **F2 Protocol Parsing & Registry:** Completed L2–L7 protocol parsing, pluggable protocol registry, and WiFi/BLE parser decoders mapping into unified schema (`NormalizedRecord`).
+- **Zeek Telemetry & Storage:** Ingests Zeek `conn.log` and `dns.log` records with SQLite WAL mode indexing and bounded queue handling.
 
 ---
 
@@ -46,18 +58,18 @@ Summary of velocity across Sprint 1 and Sprint 2:
 
 | Member | Role & Module | Sprint 1 Points | Sprint 2 Points | Total Velocity |
 | :--- | :--- | :--- | :--- | :--- |
-| Vishal Prasath | DevOps Lead / F1 Capture | 12 | 12 | 24 |
+| Vishal Prasath | DevOps Lead / F1 Capture | 12 | 14 | 26 |
 | Tejaswini R Pujar | QA Lead / F2 Parsing | 10 | 12 | 22 |
 | Ritu Ravish | Security Lead / F3 Detection | 15 | 19 | 34 |
 | Varshini A | Scrum Master / F4 Dashboard | 15 | 22 | 37 |
-| **Team Total** | | **52** | **65** | **117** |
+| **Team Total** | | **52** | **67** | **119** |
 
 ---
 
 ## Verification & Quality Gates
 
 - **Unit Tests:** 189 total passing unit tests project-wide (69 in F3 Threat Detection, 120 across F1, F2, F4).
-- **Code Coverage:** F3 Threat Detection achieved **94% line and branch coverage** (565 statements, 23 missed, 194 branches, 22 partial). F4 Dashboard achieved **96% line and branch coverage**. Both exceed the project $\ge 85\%$ threshold (NFR-QA-01).
+- **Code Coverage:** F1 Packet Capture achieved **96% line and branch coverage** (578 statements, 16 missed, 120 branches, 9 partial). F3 Threat Detection achieved **94% line and branch coverage** (565 statements, 23 missed, 194 branches, 22 partial). F4 Dashboard achieved **96% line and branch coverage**. All modules exceed the project $\ge 85\%$ threshold (NFR-QA-01).
 - **Security (SEC-01 & SEC-02):** Bandit SAST scan completed with **0 High, 0 Medium, and 0 Low** vulnerabilities across `src/detection` and `src/dashboard`. Automated fuzzing test suite (`test_fuzzing.py`) verified that corrupted packets, NaN/inf timestamps, and oversized buffers are quarantined without dropping engine threads.
 - **Linting & Code Style:** Flake8 executed with zero errors (`0` reported).
 - **Latency (NFR-PERF-03):** Measured median end-to-end update latency of **377 ms** and 95th percentile latency of **507 ms** (well below the 1,000 ms SRS limit). Full details in `docs/Latency_Report.md`.
@@ -66,6 +78,17 @@ Summary of velocity across Sprint 1 and Sprint 2:
 ---
 
 ## What went well / what to improve
+
+### F1 Packet Capture & DevOps (Vishal Prasath)
+- **What went well:**
+  - Implemented full multi-interface wireless capture: 802.11 monitor mode channel hopping across 2.4 GHz channels 1–13 (`wifi.py`), BLE advertisement scanning via BlueZ HCI sockets (`ble.py`), and remote ESP32 sniffer probe frame ingestion over UDP port 5555 (`esp32.py`).
+  - Integrated bounded asynchronous processing queues (`packet_queue.py`) across capture engines to decouple frame reception from downstream parsing and storage (`NFR-PERF-02`).
+  - Hardened capture workers with defensive exception boundaries, preventing crashes from missing interfaces, unprivileged execution, or malformed/truncated probe datagrams (`SEC-02`).
+  - Achieved 96% line and branch test coverage across the entire `src/capture` subsystem (70 unit tests passing) with 0 Bandit findings and clean flake8 compliance.
+  - Delivered containerized deployment (`Dockerfile`, `docker-compose.yml`) and systemd autostart service (`pocket-packet-sniffer.service`) for the Raspberry Pi 4 edge appliance (`NFR-PORT-01`).
+- **What to improve:**
+  - Execute physical over-the-air validation on Raspberry Pi 4 hardware with external USB monitor-mode dongles and ESP32 hardware nodes in the university network lab.
+  - Add 5 GHz channel hopping support in future iterations when dual-band hardware adapters are available.
 
 ### F3 Threat Detection & Security (Ritu Ravish)
 - **What went well:**
