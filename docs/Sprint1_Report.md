@@ -13,6 +13,16 @@
 | #5 | FR-F4-02 | Alert feed panel | 3 | Merged (#48) |
 | | | **Total planned** | **15** | |
 
+## F2 Protocol Parsing: planned work
+
+| Issue | SRS ID | Story | Points | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| #25 | FR-F2-01 | Multi-Layer Protocol Decoding | 3 | Merged (#66) |
+| #26 | FR-F2-02 | Unified Packet Schema Normalization | 2 | Merged (#66) |
+| #36 | FR-F2-04 | SQLite Storage Layer | 3 | Merged (#66) |
+| #37 | FR-F2-05 | Pluggable Protocol Parser Interface | 2 | Merged (#66) |
+| | | **Total planned** | **10** | |
+
 ## F3 Threat Detection: planned work
 
 | Issue | SRS ID | Story | Points | Status |
@@ -40,7 +50,7 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
 | Member | Points planned | Points completed |
 | :--- | :--- | :--- |
 | Vishal Prasath | 12 | 12 |
-| Tejaswini R Pujar | | |
+| Tejaswini R Pujar | 10 | 10 |
 | Ritu Ravish | 15 | 15 |
 | Varshini A | 15 | 15 |
 | **Team** | | |
@@ -84,5 +94,6 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
 - **What to improve:**
   - Wire the detection engine directly to the F2 parser stream queue and persist generated alerts to the shared SQLite database instead of using in-memory callbacks.
   - Move hardcoded rule thresholds from constructor defaults into a centralized configuration module (`src/detection/config.py`).
+
 
 
