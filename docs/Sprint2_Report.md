@@ -89,4 +89,3 @@ Summary of velocity across Sprint 1 and Sprint 2:
   - Build the missing requirements: MAC vendor lookup, extra filters and PCAP export.
   - Integrate modules earlier instead of building in parallel.
   - Run the latency test on the Raspberry Pi once hardware is available.
-
