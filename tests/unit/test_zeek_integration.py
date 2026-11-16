@@ -103,7 +103,11 @@ def test_live_zeek_file_to_sqlite(tmp_path):
             "uid": "D1",
         }) + "\n")
 
-    time.sleep(0.3)
+    for _ in range(30):
+        if result.get("count", 0) >= 2:
+            break
+        time.sleep(0.05)
+
     stop_event.set()
     worker.join(timeout=3)
 
