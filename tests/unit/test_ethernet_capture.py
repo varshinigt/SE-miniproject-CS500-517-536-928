@@ -97,3 +97,28 @@ def test_permission_denied_raises_capture_error():
 def test_interface_exists_detects_loopback():
     assert real_interface_exists("lo0") or real_interface_exists("lo")
     assert not real_interface_exists("definitely-not-a-nic")
+def test_async_capture_uses_queue_and_drains_packets(monkeypatch):
+    monkeypatch.setattr(
+        "src.capture.ethernet.interface_exists",
+        lambda interface: True
+    )
+
+    received = []
+
+    def fake_sniffer(**kwargs):
+        for packet in ["packet1", "packet2", "packet3"]:
+            kwargs["prn"](packet)
+
+    capture = EthernetCapture(
+        interface="eth0",
+        handler=lambda packet, interface: received.append(packet),
+        sniffer=fake_sniffer,
+        async_processing=True,
+        queue_size=10,
+    )
+
+    assert capture.start() == 3
+    assert len(received) == 3
+    assert capture.processed == 3
+    assert capture.queue_dropped == 0
+    assert capture.queue_depth == 0
