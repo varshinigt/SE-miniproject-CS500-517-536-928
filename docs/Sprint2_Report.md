@@ -69,7 +69,7 @@ Summary of velocity across Sprint 1 and Sprint 2:
 ## Verification & Quality Gates
 
 - **Unit Tests:** 189 total passing unit tests project-wide (69 in F3 Threat Detection, 120 across F1, F2, F4).
-- **Code Coverage:** F1 Packet Capture achieved **96% line and branch coverage** (578 statements, 16 missed, 120 branches, 9 partial). F3 Threat Detection achieved **94% line and branch coverage** (565 statements, 23 missed, 194 branches, 22 partial). F4 Dashboard achieved **96% line and branch coverage**. All modules exceed the project $\ge 85\%$ threshold (NFR-QA-01).
+- **Code Coverage:** F1 Packet Capture achieved **97% line and branch coverage** (691 statements, 16 missed, 146 branches, 9 partial; 85 tests). F3 Threat Detection achieved **94% line and branch coverage** (565 statements, 23 missed, 194 branches, 22 partial). F4 Dashboard achieved **96% line and branch coverage**. All modules exceed the project $\ge 85\%$ threshold (NFR-QA-01).
 - **Security (SEC-01 & SEC-02):** Bandit SAST scan completed with **0 High, 0 Medium, and 0 Low** vulnerabilities across `src/detection` and `src/dashboard`. Automated fuzzing test suite (`test_fuzzing.py`) verified that corrupted packets, NaN/inf timestamps, and oversized buffers are quarantined without dropping engine threads.
 - **Linting & Code Style:** Flake8 executed with zero errors (`0` reported).
 - **Latency (NFR-PERF-03):** Measured median end-to-end update latency of **377 ms** and 95th percentile latency of **507 ms** (well below the 1,000 ms SRS limit). Full details in `docs/Latency_Report.md`.
@@ -84,7 +84,7 @@ Summary of velocity across Sprint 1 and Sprint 2:
   - Implemented full multi-interface wireless capture: 802.11 monitor mode channel hopping across 2.4 GHz channels 1–13 (`wifi.py`), BLE advertisement scanning via BlueZ HCI sockets (`ble.py`), and remote ESP32 sniffer probe frame ingestion over UDP port 5555 (`esp32.py`).
   - Integrated bounded asynchronous processing queues (`packet_queue.py`) across capture engines to decouple frame reception from downstream parsing and storage (`NFR-PERF-02`).
   - Hardened capture workers with defensive exception boundaries, preventing crashes from missing interfaces, unprivileged execution, or malformed/truncated probe datagrams (`SEC-02`).
-  - Achieved 96% line and branch test coverage across the entire `src/capture` subsystem (70 unit tests passing) with 0 Bandit findings and clean flake8 compliance.
+  - Achieved 96% line and branch test coverage across the entire `src/capture` subsystem (85 unit tests passing, including the capture service runner) with 0 Bandit findings and clean flake8 compliance.
   - Delivered containerized deployment (`Dockerfile`, `docker-compose.yml`) and systemd autostart service (`pocket-packet-sniffer.service`) for the Raspberry Pi 4 edge appliance (`NFR-PORT-01`).
 - **What to improve:**
   - Execute physical over-the-air validation on Raspberry Pi 4 hardware with external USB monitor-mode dongles and ESP32 hardware nodes in the university network lab.
