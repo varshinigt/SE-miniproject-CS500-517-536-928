@@ -97,6 +97,7 @@ data/
 scripts/*
 !scripts/*.py
 !scripts/*.service
+!scripts/install_pi.sh
 scratch/
 scratch_*
 *.tmp
