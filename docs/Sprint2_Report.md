@@ -25,3 +25,25 @@ search and filters, export, phone layout, and a measured latency result.
 ## What went well / what to improve
 
 - Update after the Sprint 2 review.
+
+## F2 Protocol Parsing & Zeek Integration: Sprint 2
+
+| Issue | Story | Delivered in |
+| :--- | :--- | :--- |
+| #38 | Zeek log ingestion supporting JSON and TSV, optional fields, malformed records, and file reading/following | `src/parser/zeek_ingest.py` |
+| #39 | Bounded asynchronous packet queue to prevent unbounded queue growth, while preserving synchronous processing by default | Packet queue implementation and Ethernet capture integration |
+| #40 | Expanded unit tests and coverage verification | `tests/unit/` |
+
+### Verification
+
+- Line coverage: **91.90%**
+- Branch coverage: **85.37%**
+- Both coverage targets exceeded 85%.
+- Synthetic performance test: 5,000 packets processed, 0 dropped, and 0 errors.
+- Measured throughput: approximately 446,704 packets/second under the synthetic test setup. This is not an end-to-end live network throughput measurement.
+
+### What went well / what to improve
+
+- Zeek ingestion handles both JSON and TSV log formats and supports malformed or optional fields.
+- Bounded queue processing helps control memory usage during packet processing.
+- Further validation with live network traffic and different capture environments would strengthen performance evaluation.
