@@ -1,9 +1,20 @@
-# Basic setup: runs the test suite in a clean Python container.
-# Sniffer, parser and dashboard services will be added in Sprint 2 (NFR-PORT-01).
+# Multi-service deployment for Pocket Packet Sniffer (NFR-PORT-01)
 services:
+  dashboard:
+    build: .
+    container_name: pocket-packet-dashboard
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PPS_DB_PATH=/app/data/sniffer.db
+    volumes:
+      - ./data:/app/data
+
   tests:
-    image: python:3.11-slim
+    build: .
+    container_name: pocket-packet-tests
     working_dir: /app
     volumes:
       - .:/app
-    command: sh -c "pip install -r requirements.txt && pytest --cov=src --cov-branch"
+    command: pytest --cov=src --cov-branch --cov-report=term-missing

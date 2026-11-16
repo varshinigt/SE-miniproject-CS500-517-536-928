@@ -94,7 +94,9 @@ data/
 *.cap
 
 # Internal Document Generation & Scratch Tooling
-scripts/
+scripts/*
+!scripts/*.py
+!scripts/*.service
 scratch/
 scratch_*
 *.tmp
