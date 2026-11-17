@@ -151,11 +151,11 @@ The following 27 formal test cases verify functional and non-functional requirem
 
 | TC ID | SRS Traceability | Test Objective | Preconditions | Execution Steps | Expected Result | Pass Criteria |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **TC-F1-01** | REQ-F1-01 | Ethernet promiscuous capture | Supported network interface `eth0` and authorized traffic. | 1. Initialize `EthernetCapture(interface='eth0')`.<br>2. Generate unicast frames addressed to other MACs.<br>3. Inspect captured frame output. | Frames are captured regardless of destination MAC; timestamps and interface are populated. | All transmitted packets captured; correct interface tag. |
-| **TC-F1-02** | REQ-F1-02 | WiFi monitor channel hopping | Monitor-mode capable WiFi adapter and authorized AP. | 1. Enable monitor capture on `wlan0mon`.<br>2. Observe channel state over multiple hopping cycles. | Channels 1–13 are sequentially visited at configured interval (250ms). | Hopping thread rotates channels without crashing. |
-| **TC-F1-03** | REQ-F1-03 | BLE advertisement capture | BlueZ HCI interface `hci0` active. | 1. Start BLE capture worker.<br>2. Transmit BLE advertising packets (`ADV_IND`).<br>3. Verify ingestion stream. | BLE frames captured with MAC, RSSI, and advertising data. | Valid BLE records emitted to parser buffer. |
-| **TC-F1-04** | REQ-F1-04 | Remote ESP32 UDP frame ingest | ESP32 probe emitting UDP frames to port 5555. | 1. Open UDP receiver on port 5555.<br>2. Stream remote 802.11 frames from ESP32.<br>3. Verify parser reception. | UDP frames received, stripped of transport wrapper, and queued for decoding. | Zero dropped frames under 500 pkts/sec. |
-| **TC-F1-05** | REQ-F1-05 | PCAP session recording & rotation | Active capture session generating traffic. | 1. Configure rotation at 50MB or 15 mins.<br>2. Generate traffic until boundary is reached.<br>3. Validate output files with `tshark`. | Files rotated cleanly with timestamped names; output conforms to valid libpcap format. | `tshark -r <file>` reads rotated PCAPs without corruption. |
+| **TC-F1-01** | REQ-F1-01 | Ethernet promiscuous capture | Supported network interface `eth0` and authorized traffic. | 1. Initialize `EthernetCapture(interface='eth0')`.<br>2. Generate unicast frames addressed to other MACs.<br>3. Inspect captured frame output. | Frames are captured regardless of destination MAC; timestamps and interface are populated. | All transmitted packets captured; correct interface tag (UT_F1_01). |
+| **TC-F1-02** | REQ-F1-02 | WiFi monitor channel hopping | Monitor-mode capable WiFi adapter and authorized AP. | 1. Enable monitor capture on `wlan0mon`.<br>2. Observe channel state over multiple hopping cycles. | Channels 1–13 are sequentially visited at configured interval (250ms). | Hopping thread rotates channels without crashing (UT_F1_02). |
+| **TC-F1-03** | REQ-F1-03 | BLE advertisement capture | BlueZ HCI interface `hci0` active. | 1. Start BLE capture worker.<br>2. Transmit BLE advertising packets (`ADV_IND`).<br>3. Verify ingestion stream. | BLE frames captured with MAC, RSSI, and advertising data. | Valid BLE records emitted to parser buffer (UT_F1_03). |
+| **TC-F1-04** | REQ-F1-04 | Remote ESP32 UDP frame ingest | ESP32 probe emitting UDP frames to port 5555. | 1. Open UDP receiver on port 5555.<br>2. Stream remote 802.11 frames from ESP32.<br>3. Verify parser reception. | UDP frames received, stripped of transport wrapper, and queued for decoding. | Zero dropped frames under 500 pkts/sec; malformed datagrams rejected (UT_F1_04). |
+| **TC-F1-05** | REQ-F1-05 | PCAP session recording & rotation | Active capture session generating traffic. | 1. Configure rotation at 50MB or 15 mins.<br>2. Generate traffic until boundary is reached.<br>3. Validate output files with `tshark`. | Files rotated cleanly with timestamped names; output conforms to valid libpcap format. | `tshark -r <file>` reads rotated PCAPs without corruption (UT_F1_05). |
 | **TC-F2-01** | REQ-F2-01 | Multi-layer protocol decoding | Raw packet fixtures (Ethernet, ARP, IP, TCP, UDP, DNS). | 1. Pass raw frame bytes to `ProtocolParser.parse_frame()`.<br>2. Inspect dissected protocol layers. | Link, network, transport, and application fields accurately extracted. | All protocol fields match Wireshark dissection baseline. |
 | **TC-F2-02** | REQ-F2-02 | Schema normalization | Diverse frames (Ethernet, WiFi, BLE). | 1. Pass diverse frames into `normalizer.normalize()`.<br>2. Verify output schema against `NormalizedRecord`. | All frames produce standardized `NormalizedRecord` objects with uniform field types. | 100% conformance to `NormalizedRecord` dataclass. |
 | **TC-F2-03** | REQ-F2-03 | Zeek telemetry ingestion | Running Zeek monitor generating `conn.log`. | 1. Stream Zeek log entries to `ZeekIngester`.<br>2. Query SQLite connection records. | Zeek connection records enrich connection metadata table. | Zeek UID and service names correlated with packet records. |
@@ -176,7 +176,21 @@ The following 27 formal test cases verify functional and non-functional requirem
 | **TC-F4-04** | REQ-F4-05 | Session forensic export | Filtered traffic query. | 1. Request export in PCAP, CSV, and JSON formats.<br>2. Inspect exported file contents. | PCAP readable by Wireshark; CSV/JSON contain valid structured records. | Valid MIME headers; no truncated records. |
 | **TC-SEC-01** | SEC-01 | Bandit SAST & SonarQube audit | Complete codebase across `src/`. | 1. Execute `bandit -r src -c .bandit`.<br>2. Verify SonarQube scanner properties. | Zero High or Medium severity vulnerabilities reported. | CI build step passes cleanly with 0 security defects. |
 | **TC-SEC-02** | SEC-02 | Packet input fuzzing resilience | `DetectionEngine` input pipeline. | 1. Ingest NaN timestamps, negative ports, giant payloads, non-record objects.<br>2. Observe engine behavior. | Engine drops malformed records safely; increments `malformed_dropped`; zero crashes. | Robust error containment verified (UT_F3_04, ST_SEC_02). |
-| **TC-PERF-01** | NFR-PERF-01 | Lossless capture throughput benchmark | Traffic generator streaming frames. | 1. Run `scripts/capture_benchmark.py` at 1,000 to 5,000 pkts/sec for 60s.<br>2. Verify packet loss counters. | Packet drop percentage remains $< 0.1\%$ under target workload. | Sustained throughput achieved without memory leaks. |
+| **TC-PERF-01** | NFR-PERF-01 | Lossless capture throughput benchmark | Traffic generator streaming frames. | 1. Run `scripts/capture_benchmark.py` at 1,000 to 5,000 pkts/sec for 60s.<br>2. Verify packet loss counters. | Packet drop percentage remains $< 0.1\%$ under target workload. | Sustained throughput achieved without memory leaks (UT_F1_06, UT_F1_07). |
+| **TC-DEPLOY-01** | NFR-PORT-01 | Raspberry Pi deployment, boot start and crash recovery | Raspberry Pi 4 with Raspberry Pi OS 64-bit, on the same network as a phone. | 1. Run `docker compose up -d --build` (or `sudo ./scripts/install_pi.sh`).<br>2. Reboot the Pi and check `journalctl -b -u pocket-packet-capture` for the "Started capture source" line.<br>3. Kill capture with `sudo pkill -9 -f src.capture` and wait 5 s.<br>4. Open `http://<pi-ip>:8000` from the phone. | Both services start after boot without manual steps; capture restarts after the crash; dashboard loads on the phone. | Services up within 15 s of boot; capture running again within 10 s of the kill; `/health` returns `ok` (UT_F1_08). |
+
+**F1 unit test IDs** (all in `tests/unit/` unless noted; results in `docs/reports/F1_test_report.md`):
+
+| Unit Test ID | Test file | Covers |
+| :--- | :--- | :--- |
+| UT_F1_01 | `test_ethernet_capture.py` | Promiscuous Ethernet capture, missing interface and permission errors |
+| UT_F1_02 | `test_wifi_capture.py` | Monitor-mode capture and 250 ms channel hopping over channels 1-13 |
+| UT_F1_03 | `test_ble_capture.py` | BLE advertisement capture over BlueZ HCI |
+| UT_F1_04 | `test_esp32_ingest.py` | ESP32 UDP datagram parsing and ingestion on port 5555 |
+| UT_F1_05 | `test_pcap_session.py` | PCAP writing, size and time rotation, replay |
+| UT_F1_06 | `test_capture_stats.py` | Captured and dropped packet counters |
+| UT_F1_07 | `test_packet_queue.py`, `tests/performance/` | Bounded capture queue and throughput |
+| UT_F1_08 | `test_capture_runner.py` | Capture service runner used by systemd and Docker |
 
 ---
 
@@ -186,11 +200,11 @@ This matrix maps each requirement from the Software Requirements Specification (
 
 | Sl. | Requirement ID | Requirement Description | Subsystem | Owner | Code File Reference | Unit Test ID | System / Test Case ID | Status |
 | :---: | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| 1 | **REQ-F1-01** | Promiscuous Ethernet Capture | Capture | Vishal | `src/capture/ethernet.py` | `UT_F1_01, UT_F1_02` | `TC-F1-01` | **Verified** |
+| 1 | **REQ-F1-01** | Promiscuous Ethernet Capture | Capture | Vishal | `src/capture/ethernet.py` | `UT_F1_01` | `TC-F1-01` | **Partial** (1,000 pps on Pi not measured, see Deviations) |
 | 2 | **REQ-F1-02** | WiFi Monitor Mode & Hopping | Capture | Vishal | `src/capture/wifi.py` | `UT_F1_02` | `TC-F1-02` | **Verified** |
-| 3 | **REQ-F1-03** | BLE Advertisement Capture | Capture | Vishal | `src/capture/ble.py` | `UT_F1_03` | `TC-F1-03` | **Verified** |
-| 4 | **REQ-F1-04** | Remote ESP32 Frame Ingest | Capture | Vishal | `src/capture/esp32.py` | `UT_F1_04` | `TC-F1-04` | **Verified** |
-| 5 | **REQ-F1-05** | PCAP Session Management & Rotation | Capture | Vishal | `src/capture/session.py` | `UT_F1_03, UT_F1_04` | `TC-F1-05` | **Verified** |
+| 3 | **REQ-F1-03** | BLE Advertisement Capture | Capture | Vishal | `src/capture/ble.py` | `UT_F1_03` | `TC-F1-03` | **Partial** (50 ms limit not measured, see Deviations) |
+| 4 | **REQ-F1-04** | Remote ESP32 Frame Ingest | Capture | Vishal | `src/capture/esp32.py` | `UT_F1_04` | `TC-F1-04` | **Partial** (500 pps not measured, see Deviations) |
+| 5 | **REQ-F1-05** | PCAP Session Management & Rotation | Capture | Vishal | `src/capture/session.py` | `UT_F1_05` | `TC-F1-05` | **Verified** |
 | 6 | **REQ-F2-01** | Multi-Layer Protocol Decoding | Parser | Tejaswini | `src/parser/protocol_parser.py`| `UT_F2_01` | `TC-F2-01` | **Verified** |
 | 7 | **REQ-F2-02** | Unified Schema Normalization | Parser | Tejaswini | `src/parser/normalizer.py` | `UT_F2_02` | `TC-F2-02` | **Verified** |
 | 8 | **REQ-F2-03** | Zeek Telemetry Ingestion | Parser | Tejaswini | `src/parser/zeek_ingest.py` | `UT_F2_03` | `TC-F2-03` | **Verified** |
@@ -213,8 +227,8 @@ This matrix maps each requirement from the Software Requirements Specification (
 | 25 | **REQ-F4-05** | Session Export (PCAP/CSV/JSON) | Dashboard | Varshini | `src/dashboard/routes/export.py` | `UT_F4_05` | `TC-F4-04` | **Verified** |
 | 26 | **SEC-01** | Bandit & SonarQube SAST | Security | Ritu | `.bandit`, `sonar-project.properties` | - | `TC-SEC-01` | **Verified** |
 | 27 | **SEC-02** | Resilient Packet Processing | Security | Ritu | `src/detection/engine.py` | `UT_F3_04` | `TC-SEC-02` | **Verified** |
-| 28 | **NFR-PERF-01** | Lossless Capture at Lab Rates | Quality | Vishal | `scripts/capture_benchmark.py` | `UT_F1_01` | `TC-PERF-01` | **Verified** |
-| 29 | **NFR-PORT-01** | Raspberry Pi Docker & systemd | DevOps | Vishal | `Dockerfile`, `docker-compose.yml` | - | `TC-DEPLOY-01`| **Verified** |
+| 28 | **NFR-PERF-01** | Lossless Capture at Lab Rates | Quality | Vishal | `scripts/capture_benchmark.py`, `src/capture/stats.py` | `UT_F1_06, UT_F1_07` | `TC-PERF-01` | **Partial** (Pi benchmark not run, see Deviations) |
+| 29 | **NFR-PORT-01** | Raspberry Pi Docker & systemd | DevOps | Vishal | `Dockerfile`, `docker-compose.yml`, `scripts/*.service`, `src/capture/runner.py` | `UT_F1_08` | `TC-DEPLOY-01` | **Partial** (not run on a Pi, see Deviations) |
 | 30 | **NFR-USE-01** | Phone-Friendly Mobile Layout | Frontend | Varshini | `src/dashboard/static/index.html` | `UT_F4_02` | `TC-F4-01` | **Verified** |
 
 ---
