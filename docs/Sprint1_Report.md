@@ -13,6 +13,16 @@
 | #5 | FR-F4-02 | Alert feed panel | 3 | Merged (#48) |
 | | | **Total planned** | **15** | |
 
+## F2 Protocol Parsing: planned work
+
+| Issue | SRS ID | Story | Points | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| #25 | FR-F2-01 | Multi-Layer Protocol Decoding | 3 | Merged (#66) |
+| #26 | FR-F2-02 | Unified Packet Schema Normalization | 2 | Merged (#66) |
+| #36 | FR-F2-04 | SQLite Storage Layer | 3 | Merged (#66) |
+| #37 | FR-F2-05 | Pluggable Protocol Parser Interface | 2 | Merged (#66) |
+| | | **Total planned** | **10** | |
+
 ## F3 Threat Detection: planned work
 
 | Issue | SRS ID | Story | Points | Status |
@@ -66,6 +76,16 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
   - Replace polling with WebSocket push and measure dashboard latency against NFR-PERF-03 (both done in Sprint 2).
   - Align the dashboard queries with the final parser schema once F2 is integrated.
 
+### F2 Protocol Parsing (Tejaswini R Pujar)
+- **What went well:**
+  - Implemented a common `NormalizedRecord` data model to represent parsed network packets.
+  - Developed a pluggable parser interface and registry to support modular packet parsing and dispatch.
+  - Extended Scapy-based parsing for Ethernet, ARP, IP, TCP, UDP and DNS traffic.
+  - Added Wi-Fi (802.11) and BLE advertisement parsing support.
+  - Expanded unit tests for the parser interface, protocol parsing, and Wi-Fi/BLE handling.
+- **What to improve:**
+  - Expand protocol coverage and validate parsing across a wider range of real network traffic.
+  - Strengthen end-to-end integration between packet capture, parsing, storage and threat detection.
 ### F3 Threat Detection (Ritu Ravish)
 - **What went well:**
   - Decoupled `DetectionEngine` from individual rules via the `BaseDetector` strategy pattern, making rules modular and independently testable.
@@ -74,4 +94,6 @@ Fill in from the Project board (Project -> Insights) after the PRs are merged.
 - **What to improve:**
   - Wire the detection engine directly to the F2 parser stream queue and persist generated alerts to the shared SQLite database instead of using in-memory callbacks.
   - Move hardcoded rule thresholds from constructor defaults into a centralized configuration module (`src/detection/config.py`).
+
+
 
