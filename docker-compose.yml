@@ -1,9 +1,36 @@
-# Basic setup: runs the test suite in a clean Python container.
-# Sniffer, parser and dashboard services will be added in Sprint 2 (NFR-PORT-01).
+# Multi-service deployment for Pocket Packet Sniffer (NFR-PORT-01)
 services:
+  dashboard:
+    build: .
+    container_name: pocket-packet-dashboard
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PPS_DB_PATH=/app/data/sniffer.db
+    volumes:
+      - ./data:/app/data
+
+  # Packet capture (F1). Host networking and raw-socket capabilities let the
+  # container see the Pi's real interfaces. Set PPS_ETH_IFACE to change eth0.
+  capture:
+    build: .
+    container_name: pocket-packet-capture
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    volumes:
+      - ./data:/app/data
+    command: ["python", "-m", "src.capture", "--ethernet", "${PPS_ETH_IFACE:-eth0}", "--esp32", "--output-dir", "/app/data/pcaps"]
+
+  # Not started by `docker compose up`; run with `docker compose run --rm tests`
   tests:
-    image: python:3.11-slim
+    profiles: ["test"]
+    build: .
+    container_name: pocket-packet-tests
     working_dir: /app
     volumes:
       - .:/app
-    command: sh -c "pip install -r requirements.txt && pytest --cov=src --cov-branch"
+    command: pytest --cov=src --cov-branch --cov-report=term-missing

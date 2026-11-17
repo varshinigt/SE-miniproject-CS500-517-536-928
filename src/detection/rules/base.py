@@ -6,7 +6,7 @@ allowing new threat signatures to be plugged into the engine dynamically.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List
 from ..models import NormalizedRecord, Alert
 
 

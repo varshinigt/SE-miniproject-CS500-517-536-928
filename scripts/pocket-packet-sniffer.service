@@ -1,0 +1,19 @@
+[Unit]
+Description=Pocket Packet Sniffer Edge Appliance (UE24CS341A)
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/pocket-packet-sniffer
+ExecStart=/opt/pocket-packet-sniffer/.venv/bin/uvicorn src.dashboard.app:create_app --factory --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

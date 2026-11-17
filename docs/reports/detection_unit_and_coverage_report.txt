@@ -1,0 +1,48 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.2.0, pluggy-1.7.0
+rootdir: D:\Software_Engineering_MiniProject\SE-miniproject-CS500-517-536-928
+configfile: pytest.ini
+plugins: anyio-4.14.1, hypothesis-6.170.15, cov-7.1.0
+collected 69 items
+
+tests\test_detection\test_arp_spoof.py ........                          [ 11%]
+tests\test_detection\test_ble_flood.py .....                             [ 18%]
+tests\test_detection\test_config.py ........                             [ 30%]
+tests\test_detection\test_engine.py ............                         [ 47%]
+tests\test_detection\test_fuzzing.py .......                             [ 57%]
+tests\test_detection\test_models.py .......                              [ 68%]
+tests\test_detection\test_port_scan.py ...........                       [ 84%]
+tests\test_detection\test_rogue_ap.py .....                              [ 91%]
+tests\test_detection\test_wifi_deauth.py ......                          [100%]
+
+============================== warnings summary ===============================
+C:\Users\Ritu Ravish\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\anyio\pytest_plugin.py:14
+  C:\Users\Ritu Ravish\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\anyio\pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: D:\Software_Engineering_MiniProject\SE-miniproject-CS500-517-536-928\docs\reports\detection_unit_tests.xml -
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.11.9-final-0 _______________
+
+Name                                 Stmts   Miss Branch BrPart  Cover   Missing
+--------------------------------------------------------------------------------
+src\detection\__init__.py               10      0      0      0   100%
+src\detection\config.py                148      1     70      7    96%   114->123, 115->117, 124->135, 132, 136->145, 146->155, 156->166
+src\detection\engine.py                101      4     46      2    96%   74-75, 107-108
+src\detection\models.py                 46      0      0      0   100%
+src\detection\rules\__init__.py          7      0      0      0   100%
+src\detection\rules\arp_spoof.py        41      0     14      0   100%
+src\detection\rules\base.py             13      2      0      0    85%   27, 32
+src\detection\rules\ble_flood.py        45      4     12      4    86%   41, 51, 67, 101
+src\detection\rules\port_scan.py        55      7     16      1    86%   57-58, 62-63, 131-133
+src\detection\rules\rogue_ap.py         53      3     22      6    88%   36->43, 53, 61, 66, 75->141, 114->141
+src\detection\rules\wifi_deauth.py      46      2     14      2    93%   37, 47
+--------------------------------------------------------------------------------
+TOTAL                                  565     23    194     22    94%
+Coverage XML written to file docs/reports/detection_coverage.xml
+======================== 69 passed, 1 warning in 1.03s ========================
+

@@ -94,7 +94,10 @@ data/
 *.cap
 
 # Internal Document Generation & Scratch Tooling
-scripts/
+scripts/*
+!scripts/*.py
+!scripts/*.service
+!scripts/install_pi.sh
 scratch/
 scratch_*
 *.tmp
